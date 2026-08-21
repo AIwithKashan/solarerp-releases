@@ -123,7 +123,7 @@ function downloadFile(url: string, dest: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(dest);
     const client = url.startsWith('https') ? https : http;
-    client.get(url, (response) => {
+    client.get(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) SolarERP-Updater' } }, (response) => {
       if (response.statusCode && response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
         // Follow redirect
         return downloadFile(response.headers.location, dest).then(resolve).catch(reject);
