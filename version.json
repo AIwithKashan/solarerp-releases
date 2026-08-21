@@ -1,7 +1,7 @@
 {
-    "version":  "2.0.3",
+    "version":  "2.0.4",
     "releaseDate":  "2026-08-21",
-    "downloadUrl":  "https://github.com/aiwithkashan/solarerp-releases/releases/download/v2.0.3/SolarERP-Setup.exe",
+    "downloadUrl":  "https://github.com/aiwithkashan/solarerp-releases/releases/download/v2.0.4/SolarERP-Setup.exe",
     "changelog":  [
                       "Removed floating Connect to Phone/Mobile button.",
                       "Fixed Sales Remaining Due persistence across tabs and page navigation.",
