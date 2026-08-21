@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir /s /b \"E:\\\\Solar Shop Mangement Software\\\\SolarERP\\\\\" 2>&1 | head -80)",
+      "Bash(dir \"E:\\\\Solar Shop Mangement Software\\\\SolarERP\")",
+      "Bash(dir \"E:\\\\Solar Shop Mangement Software\\\\SolarERP\" /a)",
+      "Bash(whereis npm *)",
+      "Bash(echo \"exit: $?\")",
+      "WebFetch(domain:docs.expo.dev)",
+      "Bash(mkdir -p \"E:/Solar Shop Mangement Software/SolarERP_Mobile\")",
+      "Read(//e/Solar Shop Mangement Software/**)",
+      "Bash(npm install *)",
+      "Bash(where node *)",
+      "Bash(where java *)",
+      "Bash(java -version)",
+      "Bash(cmd /c where node)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(mkdir -p \"E:/Solar Shop Mangement Software/SolarERP/.claude/skills/emil-design-eng\" \\\\ *)"
+    ]
+  }
+}

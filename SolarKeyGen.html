@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SolarERP — Master License Key Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b1120;
+      --card: #131d33;
+      --card-border: #1e293b;
+      --primary: #10b981;
+      --primary-hover: #059669;
+      --primary-glow: rgba(16, 185, 129, 0.25);
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.12) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(56, 189, 248, 0.10) 0px, transparent 50%);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 620px;
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 32px 28px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 30px var(--primary-glow);
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .logo-icon {
+      width: 52px;
+      height: 52px;
+      background: linear-gradient(135deg, #10b981, #0284c7);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      box-shadow: 0 8px 16px rgba(16, 185, 129, 0.3);
+    }
+
+    .header-text h1 {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.02em;
+    }
+
+    .header-text p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+      font-size: 0.72rem;
+      font-weight: 700;
+      border-radius: 6px;
+      margin-left: 8px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 13px 16px;
+      background: #090e1a;
+      border: 1px solid #24324f;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 0.95rem;
+      font-family: inherit;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+    }
+
+    .hwid-input {
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 0.04em;
+      font-size: 0.95rem;
+      color: #38bdf8;
+      text-transform: uppercase;
+    }
+
+    .btn-generate {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #10b981, #059669);
+      border: none;
+      border-radius: 12px;
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: all 0.2s ease;
+      box-shadow: 0 10px 20px -5px rgba(16, 185, 129, 0.4);
+      margin-top: 8px;
+    }
+
+    .btn-generate:hover {
+      background: linear-gradient(135deg, #059669, #047857);
+      transform: translateY(-1px);
+    }
+
+    .btn-generate:active {
+      transform: translateY(0);
+    }
+
+    .result-card {
+      display: none;
+      margin-top: 24px;
+      background: #090e1a;
+      border: 1px solid #10b981;
+      border-radius: 14px;
+      padding: 20px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-title {
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: #34d399;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .key-display {
+      margin: 14px 0;
+      padding: 14px;
+      background: #040711;
+      border: 1px dashed #22c55e;
+      border-radius: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #4ade80;
+      text-align: center;
+      letter-spacing: 0.06em;
+      word-break: break-all;
+      user-select: all;
+    }
+
+    .action-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .btn-action {
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: none;
+      transition: all 0.2s;
+    }
+
+    .btn-copy {
+      background: #1e293b;
+      color: #fff;
+      border: 1px solid #334155;
+    }
+
+    .btn-copy:hover {
+      background: #334155;
+    }
+
+    .btn-whatsapp {
+      background: #16a34a;
+      color: #fff;
+    }
+
+    .btn-whatsapp:hover {
+      background: #15803d;
+    }
+
+    .footer-note {
+      margin-top: 24px;
+      font-size: 0.75rem;
+      color: #64748b;
+      text-align: center;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">
+      <div class="logo-icon">⚡</div>
+      <div class="header-text">
+        <h1>SolarERP Key Generator <span class="badge">v2.0.1</span></h1>
+        <p>AIwithKashan Master Licensing & Security Suite</p>
+      </div>
+    </div>
+
+    <form id="keyForm">
+      <div class="form-group">
+        <label>Client Hardware ID (HWID)</label>
+        <input 
+          type="text" 
+          id="hwidInput" 
+          class="hwid-input" 
+          placeholder="e.g. HWID-F1A6-916F-E041" 
+          required
+          autocomplete="off"
+          spellcheck="false"
+        >
+      </div>
+
+      <div class="form-group">
+        <label>License Duration / Type</label>
+        <select id="durationSelect">
+          <option value="LIFE" selected>Lifetime Unlimited Access (Full Purchase)</option>
+          <option value="365D">365 Days (1 Year Annual License)</option>
+          <option value="180D">180 Days (6 Months License)</option>
+          <option value="30D">30 Days (1 Month Subscription)</option>
+          <option value="7D">7 Days (Weekly Trial Extension)</option>
+          <option value="1D">1 Day (24-Hour Emergency Pass)</option>
+          <option value="1H">1 Hour (Quick Live Demonstration)</option>
+          <option value="1M">1 Minute (Internal Testing Only)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Client Shop / Owner Name (Optional)</label>
+        <input 
+          type="text" 
+          id="clientNameInput" 
+          placeholder="e.g. Haji Rehman Solar / Bannu"
+        >
+      </div>
+
+      <button type="submit" class="btn-generate">
+        <span>🔑</span> Generate Cryptographic Single-Use Key
+      </button>
+    </form>
+
+    <div id="resultCard" class="result-card">
+      <div class="result-title">
+        <span>Generated Valid Activation Key</span>
+        <span id="typeBadge" class="badge">LIFETIME</span>
+      </div>
+
+      <div id="keyOutput" class="key-display">
+        KEY-LIFE-ABCD-1234-5678
+      </div>
+
+      <div class="action-buttons">
+        <button type="button" id="copyBtn" class="btn-action btn-copy">
+          📋 Copy Key
+        </button>
+        <button type="button" id="whatsappBtn" class="btn-action btn-whatsapp">
+          💬 Share on WhatsApp
+        </button>
+      </div>
+    </div>
+
+    <div class="footer-note">
+      🔒 <b>Single-Use Cryptographic Security:</b> Every generated key includes a unique cryptographic nonce. Once activated on the client's PC, it cannot be reused again.<br/>
+      Developer Support: <b>Kashan Khan (+92 334 1911680)</b>
+    </div>
+  </div>
+
+  <script>
+    const SECRET_SALT = 'AIwithKashan_SolarERP_Secret_2026';
+
+    async function hmacSha256(keyStr, messageStr) {
+      const enc = new TextEncoder();
+      const key = await crypto.subtle.importKey(
+        'raw',
+        enc.encode(keyStr),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+      );
+      const sig = await crypto.subtle.sign('HMAC', key, enc.encode(messageStr));
+      return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+    }
+
+    async function generateSingleUseKey(hwid, typeCode) {
+      const code = typeCode.toUpperCase();
+      const nonceBytes = new Uint8Array(2);
+      crypto.getRandomValues(nonceBytes);
+      const nonce = Array.from(nonceBytes).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+      
+      const message = `${hwid.trim()}_${code}_${nonce}`;
+      const hash = await hmacSha256(SECRET_SALT, message);
+      return `KEY-${code}-${nonce}-${hash.substring(0, 4)}-${hash.substring(4, 8)}`;
+    }
+
+    const form = document.getElementById('keyForm');
+    const hwidInput = document.getElementById('hwidInput');
+    const durationSelect = document.getElementById('durationSelect');
+    const clientNameInput = document.getElementById('clientNameInput');
+    const resultCard = document.getElementById('resultCard');
+    const keyOutput = document.getElementById('keyOutput');
+    const typeBadge = document.getElementById('typeBadge');
+    const copyBtn = document.getElementById('copyBtn');
+    const whatsappBtn = document.getElementById('whatsappBtn');
+
+    let currentGeneratedKey = '';
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const hwid = hwidInput.value.trim().toUpperCase();
+      const duration = durationSelect.value;
+      const clientName = clientNameInput.value.trim();
+
+      if (!hwid) {
+        alert('Please enter client HWID!');
+        return;
+      }
+
+      currentGeneratedKey = await generateSingleUseKey(hwid, duration);
+      
+      keyOutput.textContent = currentGeneratedKey;
+      typeBadge.textContent = durationSelect.options[durationSelect.selectedIndex].text.split('(')[0].trim();
+      resultCard.style.display = 'block';
+
+      // Auto scroll to result
+      resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+
+    copyBtn.addEventListener('click', () => {
+      if (!currentGeneratedKey) return;
+      navigator.clipboard.writeText(currentGeneratedKey);
+      copyBtn.textContent = '✅ Copied!';
+      setTimeout(() => {
+        copyBtn.textContent = '📋 Copy Key';
+      }, 2000);
+    });
+
+    whatsappBtn.addEventListener('click', () => {
+      if (!currentGeneratedKey) return;
+      const clientName = clientNameInput.value.trim() || 'Valued Customer';
+      const durationText = durationSelect.options[durationSelect.selectedIndex].text;
+      
+      const message = 
+`*SolarERP Official Activation Key* ⚡
+Assalam-o-Alaikum ${clientName},
+
+Your official SolarERP license key has been generated:
+
+🔑 *License Key:*
+\`${currentGeneratedKey}\`
+
+📅 *Access Tier:* ${durationText}
+🔒 *Status:* 1-Time Single Machine Activation
+
+*How to Activate:*
+1. Open SolarERP on your computer.
+2. Paste this key in the Activation screen.
+3. Click *Activate Software*.
+
+For 24/7 technical support:
+📞 *0334-1911680* (AIwithKashan)`;
+
+      const encoded = encodeURIComponent(message);
+      window.open(`https://wa.me/?text=${encoded}`, '_blank');
+    });
+  </script>
+</body>
+</html>

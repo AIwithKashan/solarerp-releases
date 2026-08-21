@@ -1,0 +1,238 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Account {
+  id             String   @id @default(uuid())
+  account_type   String
+  account_title  String
+  region         String
+  contact_number String?
+  created_at     DateTime @default(now())
+  balance        Float?
+}
+
+model Product {
+  id              String   @id @default(uuid())
+  item_name       String
+  accounting_unit String
+  category        String
+  remarks         String?
+  created_at      DateTime @default(now())
+}
+
+model BusinessSettings {
+  id                  String   @id @default(uuid())
+  business_name       String
+  logo_url            String?
+  owner_name          String?
+  phone               String?
+  email               String?
+  address             String?
+  region              String?
+  ntn_or_tax_id       String?
+  currency            String
+  receipt_footer_note String?
+  books_start_date    DateTime?
+  updated_at          DateTime @updatedAt
+}
+
+model Purchase {
+  id              String   @id @default(uuid())
+  invoice_no      String
+  item_name       String
+  accounting_unit String
+  quantity        Float
+  rate            Float
+  amount          Float
+  power_watt      Float?
+  paidAmount      Float    @default(0)
+  remainingAmount Float    @default(0)
+  paymentStatus   String?  @default("unpaid")
+  supplier_id     String?
+  supplier_name   String?
+  purchase_date   String
+  remarks         String?
+  created_at      DateTime @default(now())
+
+  // Relations
+  allocations         PaymentAllocation[]
+  voucher_allocations VoucherPurchaseAllocation[]
+}
+
+model Sale {
+  id                String            @id @default(uuid())
+  invoice_no        String
+  customer_id       String?
+  customer_name     String?
+  customer_phone    String?
+  customer_area     String?
+  reference         String?
+  sale_date         String
+  subtotal          Float
+  discount_percent  Float
+  discount_amount   Float
+  net_total         Float
+  total_received    Float
+  remaining_balance Float
+  status            String            @default("unpaid")
+  remarks           String?
+  created_at        DateTime          @default(now())
+  
+  sale_items          SaleItem[]
+  sale_payments       SalePayment[]
+  sale_other_credits  SaleOtherCredit[]
+  voucher_allocations VoucherSaleAllocation[]
+}
+
+model SaleItem {
+  id              String  @id @default(uuid())
+  sale_id         String
+  sale            Sale    @relation(fields: [sale_id], references: [id], onDelete: Cascade)
+  item_name       String
+  accounting_unit String
+  power_watt      Float?
+  quantity        Float
+  rate            Float
+  amount          Float
+  remarks         String?
+}
+
+model SalePayment {
+  id                   String  @id @default(uuid())
+  sale_id              String
+  sale                 Sale    @relation(fields: [sale_id], references: [id], onDelete: Cascade)
+  payment_account_id   String?
+  payment_account_name String
+  pay_date             String
+  remarks              String?
+  amount               Float
+}
+
+model SaleOtherCredit {
+  id        String  @id @default(uuid())
+  sale_id   String
+  sale      Sale    @relation(fields: [sale_id], references: [id], onDelete: Cascade)
+  item_name String
+  quantity  Float
+  rate      Float
+  amount    Float
+  remarks   String?
+}
+
+model Voucher {
+  id                 String   @id @default(uuid())
+  voucher_no         String
+  voucher_type       String
+  voucher_date       String
+  main_account_id    String
+  main_account_name  String
+  party_account_id   String?
+  party_account_name String?
+  direction          String
+  amount             Float
+  details            String?
+  remarks            String?
+  created_at         DateTime @default(now())
+
+  purchase_allocations VoucherPurchaseAllocation[]
+  sale_allocations     VoucherSaleAllocation[]
+}
+
+model VoucherPurchaseAllocation {
+  id                 String          @id @default(uuid())
+  voucher_id         String?
+  voucher            Voucher?        @relation(fields: [voucher_id], references: [id], onDelete: Cascade)
+  journal_voucher_id String?
+  journalVoucher     JournalVoucher? @relation(fields: [journal_voucher_id], references: [id], onDelete: Cascade)
+  purchase_id        String
+  purchase           Purchase        @relation(fields: [purchase_id], references: [id], onDelete: Cascade)
+  allocatedAmount    Float
+}
+
+model VoucherSaleAllocation {
+  id                 String          @id @default(uuid())
+  voucher_id         String?
+  voucher            Voucher?        @relation(fields: [voucher_id], references: [id], onDelete: Cascade)
+  journal_voucher_id String?
+  journalVoucher     JournalVoucher? @relation(fields: [journal_voucher_id], references: [id], onDelete: Cascade)
+  sale_id            String
+  sale               Sale            @relation(fields: [sale_id], references: [id], onDelete: Cascade)
+  allocatedAmount    Float
+}
+
+model JournalVoucher {
+  id           String               @id @default(uuid())
+  voucher_no   String
+  voucher_date String
+  remarks      String?
+  total_debit  Float
+  total_credit Float
+  created_at   DateTime             @default(now())
+  lines               JournalVoucherLine[]
+  purchaseAllocations VoucherPurchaseAllocation[]
+  saleAllocations     VoucherSaleAllocation[]
+}
+
+model JournalVoucherLine {
+  id           String         @id @default(uuid())
+  voucher_id   String
+  voucher      JournalVoucher @relation(fields: [voucher_id], references: [id], onDelete: Cascade)
+  account_id   String
+  account_name String
+  remarks      String?
+  debit        Float
+  credit       Float
+}
+
+model PaymentVoucher {
+  id                String   @id @default(uuid())
+  voucherNo         String
+  date              String
+  supplierId        String
+  supplierName      String
+  paidFromAccountId String
+  paidFromAccountName String
+  amount            Float
+  paymentMode       String   // 'cash' | 'bank_transfer' | 'cheque' | 'online'
+  reference         String?
+  notes             String?
+  createdAt         DateTime @default(now())
+
+  allocations       PaymentAllocation[]
+}
+
+model PaymentAllocation {
+  id              String   @id @default(uuid())
+  voucherId       String
+  voucher         PaymentVoucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+  purchaseId      String
+  purchase        Purchase       @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  allocatedAmount Float
+}
+
+model CashDenomination {
+  id        String   @id @default(uuid())
+  date      String   // YYYY-MM-DD
+  n5000     Int      @default(0)
+  n1000     Int      @default(0)
+  n500      Int      @default(0)
+  n100      Int      @default(0)
+  n50       Int      @default(0)
+  n20       Int      @default(0)
+  n10       Int      @default(0)
+  coins     Int      @default(0)
+  total     Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([date])
+}

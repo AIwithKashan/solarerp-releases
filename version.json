@@ -1,0 +1,14 @@
+{
+  "version": "2.0.2",
+  "releaseDate": "2026-08-21",
+  "downloadUrl": "https://github.com/aiwithkashan/solarerp-releases/releases/download/v2.0.2/SolarERP-Setup.exe",
+  "changelog": [
+    "Removed floating Connect to Phone/Mobile button.",
+    "Fixed Sales Remaining Due persistence across tabs and page navigation.",
+    "Enhanced Customer Selection with real-time Khata/Due balance badges.",
+    "Fixed Cash & Bank Available Balance calculation in Vouchers and Purchases.",
+    "Enforced Single-Use (One-Time) License Keys with cryptographic nonce verification.",
+    "Added In-App Database Location Switcher and automatic file migration in Settings.",
+    "Added In-App 1-Click Update System."
+  ]
+}
