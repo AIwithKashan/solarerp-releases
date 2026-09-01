@@ -1,13 +1,14 @@
 {
-  "version": "2.0.6",
-  "releaseDate": "2026-09-01",
-  "downloadUrl": "https://github.com/AIwithKashan/solarerp-releases/releases/download/v2.0.6/SolarERP-Setup.exe",
-  "changelog": [
-    "Added Bilti No / Container Tracking in Purchases & Sales.",
-    "Added Container-Wise P&L Tracking & Margin analytics.",
-    "Unified Single-Window Vouchers section (Money In / Money Out).",
-    "Upgraded Supplier dropdown with rich badges and custom supplier entry.",
-    "Added automatic database schema migrations for all tables.",
-    "Integrated Google Drive master backup credentials."
-  ]
+    "version": "2.0.6",
+    "releaseDate": "2026-09-01",
+    "downloadUrl": "https://github.com/AIwithKashan/solarerp-releases/releases/download/v2.0.6/SolarERP-Setup.exe",
+    "changelog": [
+        "Added Bilti No / Container Tracking in Purchases & Sales.",
+        "Added Container-Wise P&L Tracking & Margin analytics.",
+        "Unified Single-Window Vouchers section (Money In / Money Out).",
+        "Upgraded Supplier dropdown with rich badges and custom supplier entry.",
+        "Added automatic database schema migrations for all tables.",
+        "Integrated Google Drive master backup credentials."
+    ],
+    "patchUrl": "https://github.com/AIwithKashan/solarerp-releases/releases/download/v2.0.6/SolarERP-Patch.zip"
 }
