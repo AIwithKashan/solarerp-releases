@@ -681,8 +681,8 @@ function PurchaseForm({
       <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
         
         {/* 1. Supplier Name - Span 2 columns, high z-index */}
-        <div className="field-group md:col-span-2" style={{ zIndex: 60, position: 'relative' }}>
-          <label className="field-label">Supplier Name *</label>
+        <div className="field-group md:col-span-2" style={{ zIndex: 70, position: 'relative' }}>
+            <label className="field-label">Supplier Name *</label>
           <SupplierCombobox
             valueId={form.supplier_id}
             onChange={(id, name) => setForm(f => ({ ...f, supplier_id: id, supplier_name: name }))}

@@ -1,6 +1,7 @@
 // index.js — Express server for Auth & Admin integration
 
-require('dotenv').config();
+try { require('dotenv').config(); } catch (e) {}
+
 
 const express = require('express');
 const http = require('http');
@@ -30,9 +31,10 @@ app.use('/api/admin', adminRoutes);
 
 const startServer = async () => {
   try {
-    // Seed Developer Account
+    // Seed Developer Account (Disabled due to missing User model)
     const devEmail = process.env.DEV_EMAIL;
     const devPassword = process.env.DEV_PASSWORD;
+    /*
     if (devEmail && devPassword) {
       const existingDev = await prisma.user.findUnique({ where: { email: devEmail } });
       if (!existingDev) {
@@ -49,6 +51,7 @@ const startServer = async () => {
         console.log(`[Auth] Developer account seeded: ${devEmail}`);
       }
     }
+    */
 
     server.listen(PORT, '0.0.0.0', () => {
       console.log(`\n  ⚡ AIwithKashan Auth Server`);

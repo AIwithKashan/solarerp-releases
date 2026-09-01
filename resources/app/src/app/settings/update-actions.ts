@@ -7,7 +7,7 @@ import http from 'http';
 import { spawn } from 'child_process';
 import type { ActionResult } from '@/types/database';
 
-const CURRENT_APP_VERSION = '2.0.5';
+const CURRENT_APP_VERSION = '2.0.6';
 
 export interface UpdateInfo {
   hasUpdate: boolean;
