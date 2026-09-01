@@ -1,7 +1,7 @@
 {
     "version": "2.0.6",
     "releaseDate": "2026-09-01",
-    "downloadUrl": "https://github.com/AIwithKashan/solarerp-releases/releases/download/v2.0.6/SolarERP-Setup.exe",
+    "downloadUrl": "https://github.com/AIwithKashan/solarerp-releases/releases/download/v2.0.6/SolarERP-Setup-v2.exe",
     "changelog": [
         "Added Bilti No / Container Tracking in Purchases & Sales.",
         "Added Container-Wise P&L Tracking & Margin analytics.",
