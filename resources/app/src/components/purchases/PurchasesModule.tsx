@@ -13,7 +13,7 @@ import {
   Sun, Moon, Zap, User, Lock, Eye, EyeOff, Plus, Search, Building2, Phone, MapPin, Tag,
   ChevronDown, X, Check, AlertCircle, Trash2, Edit3, Users, CreditCard, Briefcase, Package,
   Home, TrendingUp, Shield, SlidersHorizontal, Grid3X3, List, Filter, ChevronUp, Bell,
-  Settings, BarChart3, Loader2, LogOut, LogIn, ShoppingCart, FileText, ChevronRight, Layers, Hash, Calendar, Banknote
+  Settings, BarChart3, Loader2, LogOut, LogIn, ShoppingCart, FileText, ChevronRight, Layers, Hash, Calendar, Banknote, Truck
 , LineChart} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
@@ -340,7 +340,7 @@ function ProductCombobox({ value, onChange, products, placeholder, hasError }: {
   );
 }
 
-// ─── SupplierCombobox Component (Upgrade 1) ──────────────────────────────────
+// ─── SupplierCombobox Component (Rich Format & Custom Entry Support) ─────────
 
 function SupplierCombobox({ valueId, onChange, suppliers, placeholder, hasError }: {
   valueId: string;
@@ -362,7 +362,7 @@ function SupplierCombobox({ valueId, onChange, suppliers, placeholder, hasError 
 
   useEffect(() => {
     const sel = suppliers.find(s => s.id === valueId);
-    setQuery(sel ? sel.account_title : '');
+    setQuery(sel ? sel.account_title : (valueId || ''));
     setCursor(-1);
   }, [valueId, suppliers]);
 
@@ -372,20 +372,38 @@ function SupplierCombobox({ valueId, onChange, suppliers, placeholder, hasError 
         setOpen(false);
         setCursor(-1);
         const sel = suppliers.find(s => s.id === valueId);
-        setQuery(sel ? sel.account_title : '');
+        if (sel) {
+          setQuery(sel.account_title);
+        } else if (queryRef.current.trim()) {
+          onChange('', queryRef.current.trim());
+        }
       }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [valueId, suppliers]);
+  }, [valueId, suppliers, onChange]);
 
   const filtered = query === (selected ? selected.account_title : '') || query === ''
     ? suppliers
-    : suppliers.filter(s => s.account_title.toLowerCase().includes(query.toLowerCase()));
+    : suppliers.filter(s => 
+        s.account_title.toLowerCase().includes(query.toLowerCase()) ||
+        (s.region && s.region.toLowerCase().includes(query.toLowerCase())) ||
+        (s.contact_number && s.contact_number.includes(query))
+      );
+
+  const isCustom = query.trim() !== '' && !suppliers.some(s => s.account_title.toLowerCase() === query.trim().toLowerCase());
 
   const select = (sup: Account) => {
     onChange(sup.id, sup.account_title);
     setQuery(sup.account_title);
+    setOpen(false);
+    setCursor(-1);
+  };
+
+  const confirmCustom = () => {
+    const v = query.trim();
+    if (!v) return;
+    onChange('', v);
     setOpen(false);
     setCursor(-1);
   };
@@ -405,6 +423,7 @@ function SupplierCombobox({ valueId, onChange, suppliers, placeholder, hasError 
     else if (e.key === 'Enter') {
       e.preventDefault();
       if (cursor >= 0 && filtered[cursor]) select(filtered[cursor]);
+      else if (isCustom) confirmCustom();
       else if (filtered.length === 1) select(filtered[0]);
     }
   };
@@ -439,18 +458,46 @@ function SupplierCombobox({ valueId, onChange, suppliers, placeholder, hasError 
       </div>
 
       {open && (
-        <ul ref={listRef} className="combobox-dropdown" role="listbox">
-          {filtered.map((sup, idx) => (
-            <li key={sup.id} data-cbitem
-              className={cls('combobox-item', valueId === sup.id && 'selected', cursor === idx && 'highlighted')}
-              onClick={() => select(sup)}
-              onMouseEnter={() => setCursor(idx)}
-              role="option" aria-selected={valueId === sup.id}>
-              <span>{sup.account_title}</span>
-              {valueId === sup.id && <Check size={13} />}
+        <ul ref={listRef} className="combobox-dropdown" role="listbox" style={{ zIndex: 120, maxHeight: '240px' }}>
+          {filtered.map((sup, idx) => {
+            const due = (sup as any).total_due !== undefined ? (sup as any).total_due : sup.balance;
+            return (
+              <li key={sup.id} data-cbitem
+                className={cls('combobox-item', valueId === sup.id && 'selected', cursor === idx && 'highlighted')}
+                onClick={() => select(sup)}
+                onMouseEnter={() => setCursor(idx)}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', padding: '8px 12px' }}
+                role="option" aria-selected={valueId === sup.id}>
+                <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                  <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {sup.account_title}
+                  </span>
+                  {(sup.region || sup.contact_number) && (
+                    <span style={{ fontSize: '0.72rem', color: 'var(--c-text-muted)', display: 'flex', gap: '8px', marginTop: '2px' }}>
+                      {sup.region && <span>📍 {sup.region}</span>}
+                      {sup.contact_number && <span>📞 {sup.contact_number}</span>}
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                  {due !== undefined && due !== 0 && (
+                    <span style={{ fontSize: '0.72rem', padding: '2px 6px', borderRadius: '4px', background: due > 0 ? '#fef2f2' : 'var(--c-primary-light)', color: due > 0 ? '#ef4444' : 'var(--c-primary-dark)', fontWeight: 700 }}>
+                      {due > 0 ? `Payable: PKR ${formatPKR(due)}` : `Adv: PKR ${formatPKR(Math.abs(due))}`}
+                    </span>
+                  )}
+                  {valueId === sup.id && <Check size={14} className="text-emerald-500" />}
+                </div>
+              </li>
+            );
+          })}
+          {isCustom && (
+            <li className="combobox-custom-row" onClick={confirmCustom} role="option" aria-selected={false} style={{ padding: '8px 12px' }}>
+              <span className="combobox-custom-icon"><Plus size={13} /></span>
+              <span>Use&nbsp;<strong>&ldquo;{query.trim()}&rdquo;</strong></span>
+              <span className="combobox-custom-hint">↵ Enter</span>
             </li>
-          ))}
-          {filtered.length === 0 && (
+          )}
+          {filtered.length === 0 && !isCustom && (
             <li className="combobox-empty">
               {suppliers.length === 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '4px' }}>
@@ -504,6 +551,7 @@ interface FormState {
   quantity: string;
   rate: string;
   power_watt: string;
+  bilti_no: string;
   supplier_id: string;
   supplier_name: string;
   purchase_date: string;
@@ -516,6 +564,7 @@ const EMPTY_FORM = (): FormState => ({
   quantity: '1',
   rate: '0',
   power_watt: '',
+  bilti_no: '',
   supplier_id: '',
   supplier_name: '',
   purchase_date: new Date().toISOString().split('T')[0],
@@ -543,6 +592,7 @@ function PurchaseForm({
         quantity:        String(editTarget.quantity),
         rate:            String(editTarget.rate),
         power_watt:      editTarget.power_watt !== null && editTarget.power_watt !== undefined ? String(editTarget.power_watt) : '',
+        bilti_no:        editTarget.bilti_no ?? '',
         supplier_id:     editTarget.supplier_id ?? '',
         supplier_name:   editTarget.supplier_name ?? '',
         purchase_date:   editTarget.purchase_date ? editTarget.purchase_date.split('T')[0] : new Date().toISOString().split('T')[0],
@@ -616,6 +666,7 @@ function PurchaseForm({
       quantity:        parseFloat(form.quantity),
       rate:            parseFloat(form.rate),
       power_watt:      isWattBased ? parseFloat(form.power_watt) : null,
+      bilti_no:        form.bilti_no.trim() || null,
       supplier_id:     form.supplier_id,
       supplier_name:   form.supplier_name,
       purchase_date:   form.purchase_date,
@@ -670,6 +721,21 @@ function PurchaseForm({
               readOnly
               disabled
               style={{ opacity: 0.8 }}
+            />
+          </div>
+        </div>
+
+        {/* 3b. Bilti No / Container # (Optional) */}
+        <div className="field-group">
+          <label className="field-label">Bilti No / Container # (Optional)</label>
+          <div className="input-wrapper">
+            <Truck size={16} className="input-icon" />
+            <input
+              className="field-input"
+              placeholder="e.g. BL-9842 / Container-A"
+              value={form.bilti_no}
+              onChange={e => setForm(f => ({ ...f, bilti_no: e.target.value }))}
+              disabled={isPending}
             />
           </div>
         </div>
@@ -976,9 +1042,9 @@ function PurchaseTable({
               {filtered.map((pur, i) => (
                 <tr key={pur.id} className="data-row">
                   <td className="td-num">{i + 1}</td>
-                  <td style={{ whiteSpace: 'nowrap', fontWeight: 500 }}>{formatDatePK(pur.purchase_date)}</td>
-                  <td style={{ fontWeight: 700, color: 'var(--c-text-muted)', whiteSpace: 'nowrap' }}>{pur.invoice_no}</td>
-                  <td className="td-title" style={{ fontWeight: 600, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <td data-label="Date" style={{ whiteSpace: 'nowrap', fontWeight: 500 }}>{formatDatePK(pur.purchase_date)}</td>
+                  <td data-label="Invoice #" style={{ fontWeight: 700, color: 'var(--c-text-muted)', whiteSpace: 'nowrap' }}>{pur.invoice_no}</td>
+                  <td className="td-title" data-label="Item Name" style={{ fontWeight: 600, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {pur.item_name}
                     {pur.power_watt && ['watt', 'kw'].includes(pur.accounting_unit.toLowerCase()) && (
                       <span className="badge-power" style={{
@@ -990,8 +1056,19 @@ function PurchaseTable({
                         {pur.power_watt}W
                       </span>
                     )}
+                    {pur.bilti_no && (
+                      <span style={{
+                        marginLeft: '6px', padding: '2px 6px',
+                        background: 'var(--c-bg-alt)', color: 'var(--c-text-muted)',
+                        borderRadius: '4px', fontSize: '0.7rem', fontWeight: 600,
+                        border: '1px solid var(--c-border)', display: 'inline-flex', alignItems: 'center', gap: '3px'
+                      }}>
+                        <Truck size={10} />
+                        {pur.bilti_no}
+                      </span>
+                    )}
                   </td>
-                  <td style={{ fontWeight: 500, maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <td data-label="Supplier" style={{ fontWeight: 500, maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {pur.supplier_id ? (
                       <button 
                         type="button" 
@@ -1002,19 +1079,19 @@ function PurchaseTable({
                       </button>
                     ) : (pur.supplier_name ?? '—')}
                   </td>
-                  <td>
+                  <td data-label="Unit">
                     <span className="area-tag" style={{ color: 'var(--c-text)' }}>{pur.accounting_unit}</span>
                   </td>
-                  <td style={{ fontWeight: 500 }}>{pur.quantity}</td>
-                  <td>
+                  <td data-label="Quantity" style={{ fontWeight: 500 }}>{pur.quantity}</td>
+                  <td data-label="Rate (PKR)">
                     {formatPKR(pur.rate)}
                     {pur.power_watt && ['watt', 'kw'].includes(pur.accounting_unit.toLowerCase()) && <span style={{ color: 'var(--c-text-subtle)', fontSize: '0.75rem', fontWeight: 400 }}> /W</span>}
                   </td>
-                  <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--c-primary)' }}>{formatPKR(pur.amount)}</td>
-                  <td style={{ textAlign: 'right', fontWeight: 700, color: (pur.remainingAmount || 0) <= 0 ? 'var(--c-success)' : 'var(--c-danger)' }}>
+                  <td data-label="Amount (PKR)" style={{ textAlign: 'right', fontWeight: 700, color: 'var(--c-primary)' }}>{formatPKR(pur.amount)}</td>
+                  <td data-label="Remaining Due" style={{ textAlign: 'right', fontWeight: 700, color: (pur.remainingAmount || 0) <= 0 ? 'var(--c-success)' : 'var(--c-danger)' }}>
                     {(pur.remainingAmount || 0) <= 0 ? 'Cleared' : formatPKR(pur.remainingAmount || pur.amount)}
                   </td>
-                  <td>
+                  <td data-label="Status">
                     <span style={{
                       padding: '3px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase',
                       background: pur.paymentStatus === 'paid' ? 'rgba(16,185,129,0.15)' : pur.paymentStatus === 'partial' ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)',
@@ -1023,7 +1100,7 @@ function PurchaseTable({
                       {pur.paymentStatus || 'unpaid'}
                     </span>
                   </td>
-                  <td className="td-contact" style={{ display: 'table-cell', maxWidth: '200px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={pur.remarks ?? ''}>
+                  <td className="td-contact" data-label="Remarks" style={{ display: 'table-cell', maxWidth: '200px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={pur.remarks ?? ''}>
                     {pur.remarks ? (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                         <FileText size={12} className="input-icon-static" />
@@ -1051,10 +1128,10 @@ function PurchaseTable({
                 <td colSpan={8} style={{ textAlign: 'right', padding: '16px 20px', fontSize: '1rem', color: 'var(--c-text-muted)' }}>
                   Grand Total Outlay:
                 </td>
-                <td style={{ textAlign: 'right', padding: '16px 20px', fontSize: '1.05rem', color: 'var(--c-primary)' }}>
+                <td data-label="Total Outlay" style={{ textAlign: 'right', padding: '16px 20px', fontSize: '1.05rem', color: 'var(--c-primary)' }}>
                   PKR {formatPKR(grandTotalSum)}
                 </td>
-                <td style={{ textAlign: 'right', padding: '16px 20px', fontSize: '0.9rem', fontWeight: 700, color: 'var(--c-danger)' }}>
+                <td data-label="Outstanding" style={{ textAlign: 'right', padding: '16px 20px', fontSize: '0.9rem', fontWeight: 700, color: 'var(--c-danger)' }}>
                   PKR {formatPKR(filtered.reduce((s, p) => s + (p.remainingAmount || 0), 0))}
                 </td>
                 <td colSpan={3}></td>

@@ -7,7 +7,7 @@ import http from 'http';
 import { spawn } from 'child_process';
 import type { ActionResult } from '@/types/database';
 
-const CURRENT_APP_VERSION = '2.0.2';
+const CURRENT_APP_VERSION = '2.0.5';
 
 export interface UpdateInfo {
   hasUpdate: boolean;
@@ -95,13 +95,15 @@ export async function downloadAndRunUpdate(downloadUrl?: string): Promise<Action
 
     await downloadFile(downloadUrl, installerPath);
 
-    // Launch installer detached and exit current process
+    // Write a detached runner batch script that waits for current app to exit, then launches installer
     if (process.platform === 'win32') {
-      const child = spawn(installerPath, ['/SILENT'], {
-        detached: true,
-        stdio: 'ignore'
-      });
-      child.unref();
+      const batPath = path.join(tempDir, `run_solar_update_${Date.now()}.bat`);
+      const batContent = `@echo off\r\ntimeout /t 2 /nobreak >nul\r\nstart "" "${installerPath}" /SILENT\r\nexit\r\n`;
+      fs.writeFileSync(batPath, batContent);
+
+      const { exec } = require('child_process');
+      exec(`cmd.exe /c start "" "${batPath}"`, { windowsHide: true });
+
       setTimeout(() => {
         process.exit(0);
       }, 1000);

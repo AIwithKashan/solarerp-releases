@@ -1169,7 +1169,7 @@ input, select, textarea { font-family: inherit; }
    RESPONSIVE
    ═══════════════════════════════════════════════════════════════ */
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .sidebar { width: var(--sidebar-coll-w); }
   .sidebar-brand-text,
   .sidebar-footer .user-info-sm,
@@ -1335,7 +1335,7 @@ input, select, textarea { font-family: inherit; }
   padding-bottom: env(safe-area-inset-bottom);
   z-index: 1000;
 }
-@media (min-width: 769px) { .mobile-bottom-nav { display: none; } }
+@media (min-width: 768px) { .mobile-bottom-nav { display: none; } }
 
 .nav-tab {
   display: flex;
@@ -1366,7 +1366,7 @@ input, select, textarea { font-family: inherit; }
   transition: var(--transition);
 }
 .network-widget:hover { transform: scale(1.05); }
-@media (max-width: 768px) { .network-widget { display: none; } }
+@media (max-width: 767px) { .network-widget { display: none; } }
 
 
 /* ─── Sidebar Collapsed State overrides ──────────────────────────────────────── */

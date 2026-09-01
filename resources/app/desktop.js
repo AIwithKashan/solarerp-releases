@@ -101,12 +101,60 @@ function initializeDatabaseAndStart(dbDirectory) {
   process.env.DEV_EMAIL = 'admin@example.com';
   process.env.DEV_PASSWORD = 'admin';
 
-  startBackend();
-  startFrontend();
+  // Automatically migrate schema columns (e.g. bilti_no) before booting servers
+  autoMigrateDatabase(dbPath, () => {
+    startBackend();
+    startFrontend();
 
-  checkServerReady(() => {
-    createWindow();
+    checkServerReady(() => {
+      createWindow();
+    });
   });
+}
+
+function autoMigrateDatabase(dbFilePath, callback) {
+  try {
+    const sqlite3 = require('sqlite3');
+    const db = new sqlite3.Database(dbFilePath, (err) => {
+      if (err) {
+        console.error('[Migration]: Could not open db for auto-migration:', err);
+        return callback();
+      }
+
+      db.serialize(() => {
+        db.all("PRAGMA table_info(Purchase)", (pErr, rows) => {
+          if (!pErr && rows && rows.length > 0) {
+            const hasBilti = rows.some(r => r.name === 'bilti_no');
+            if (!hasBilti) {
+              console.log('[Migration]: Adding bilti_no to Purchase table...');
+              db.run("ALTER TABLE Purchase ADD COLUMN bilti_no TEXT", (aErr) => {
+                if (aErr) console.warn('[Migration]: Purchase bilti_no alter notice:', aErr.message);
+              });
+            }
+          }
+        });
+
+        db.all("PRAGMA table_info(SaleItem)", (sErr, rows) => {
+          if (!sErr && rows && rows.length > 0) {
+            const hasBilti = rows.some(r => r.name === 'bilti_no');
+            if (!hasBilti) {
+              console.log('[Migration]: Adding bilti_no to SaleItem table...');
+              db.run("ALTER TABLE SaleItem ADD COLUMN bilti_no TEXT", (aErr) => {
+                if (aErr) console.warn('[Migration]: SaleItem bilti_no alter notice:', aErr.message);
+              });
+            }
+          }
+        });
+      });
+
+      db.close(() => {
+        callback();
+      });
+    });
+  } catch (e) {
+    console.error('[Migration]: Exception in autoMigrateDatabase:', e);
+    callback();
+  }
 }
 
 function startBackend() {

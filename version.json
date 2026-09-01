@@ -1,15 +1,13 @@
 {
-    "version":  "2.0.4",
-    "releaseDate":  "2026-08-21",
-    "downloadUrl":  "https://github.com/aiwithkashan/solarerp-releases/releases/download/v2.0.4/SolarERP-Setup.exe",
+    "version":  "2.0.5",
+    "releaseDate":  "2026-09-01",
+    "downloadUrl":  "https://github.com/AIwithKashan/solarerp-releases/releases/download/v2.0.5/SolarERP-Setup.exe",
     "changelog":  [
-                      "Removed floating Connect to Phone/Mobile button.",
-                      "Fixed Sales Remaining Due persistence across tabs and page navigation.",
-                      "Enhanced Customer Selection with real-time Khata/Due balance badges.",
-                      "Fixed Cash \u0026 Bank Available Balance calculation in Vouchers and Purchases.",
-                      "Enforced Single-Use (One-Time) License Keys with cryptographic nonce verification.",
-                      "Added In-App Database Location Switcher and automatic file migration in Settings.",
-                      "Added In-App 1-Click Update System.",
-                      "Fixed Custom Credit Items (Installation/Delivery) missing from Net Total and Invoice Print."
+                      "Added Bilti No / Container Tracking in Purchases & Sales.",
+                      "Added Container-Wise P&L Tracking & Margin analytics.",
+                      "Unified Single-Window Vouchers section (Money In / Money Out).",
+                      "Upgraded Supplier dropdown with rich badges and custom supplier entry.",
+                      "Added automatic database schema migrations for all tables.",
+                      "Integrated Google Drive master backup credentials."
                   ]
 }

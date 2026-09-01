@@ -6,27 +6,49 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const fromParam = searchParams.get('from');
     const toParam = searchParams.get('to');
+    const biltiParam = searchParams.get('bilti')?.trim() || '';
     
     if (!fromParam || !toParam) {
       return NextResponse.json({ success: false, error: 'From and To dates are required' }, { status: 400 });
     }
 
-    
     // 1. Fetch Business Settings
-    const settings = await prisma.businessSettings.findFirst({
-      
-    });
+    const settings = await prisma.businessSettings.findFirst({});
     const businessName = settings?.business_name || 'Business Name';
 
-    // 2. Fetch Sales within date range (to get trading items)
+    // 2. Fetch distinct bilti numbers for dropdown selector
+    const biltiPurchases = await prisma.purchase.findMany({
+      where: { bilti_no: { not: null } },
+      select: { bilti_no: true },
+      distinct: ['bilti_no']
+    });
+    const biltiSales = await prisma.saleItem.findMany({
+      where: { bilti_no: { not: null } },
+      select: { bilti_no: true },
+      distinct: ['bilti_no']
+    });
+    const availableBiltisSet = new Set<string>();
+    biltiPurchases.forEach(p => { if (p.bilti_no?.trim()) availableBiltisSet.add(p.bilti_no.trim()); });
+    biltiSales.forEach(s => { if (s.bilti_no?.trim()) availableBiltisSet.add(s.bilti_no.trim()); });
+    const availableBiltis = Array.from(availableBiltisSet).sort();
+
+    // 3. Fetch Sales within date range (filtered by bilti if specified)
+    const salesWhere: any = { sale_date: { gte: fromParam, lte: toParam } };
+    if (biltiParam) {
+      salesWhere.sale_items = { some: { bilti_no: biltiParam } };
+    }
     const sales = await prisma.sale.findMany({
-      where: { sale_date: { gte: fromParam, lte: toParam } },
+      where: salesWhere,
       include: { sale_items: true }
     });
 
-    // 3. Fetch Purchases up to 'to' date to calculate weighted average cost
+    // 4. Fetch Purchases up to 'to' date to calculate weighted average cost (or container cost)
+    const purchasesWhere: any = { purchase_date: { lte: toParam } };
+    if (biltiParam) {
+      purchasesWhere.bilti_no = biltiParam;
+    }
     const purchases = await prisma.purchase.findMany({
-      where: { purchase_date: { lte: toParam } }
+      where: purchasesWhere
     });
 
     // Calculate Average Cost per item
@@ -46,33 +68,27 @@ export async function GET(request: Request) {
       return entry.value / entry.qty;
     };
 
-    // 4. Calculate Trading Profit
+    // 5. Calculate Trading Profit
     const tradingItems: any[] = [];
     let grossTradingProfit = 0;
 
     sales.forEach(sale => {
-      // In a real P&L, you might group by item rather than list every single invoice line.
-      // But the user requested: "A table listing every item sold within the date range"
-      // To keep it somewhat concise, we'll group by item within the date range.
       sale.sale_items.forEach(item => {
+        if (biltiParam && item.bilti_no !== biltiParam) {
+          return; // Skip items from other biltis when filtering
+        }
+
         const avgCost = getAvgCost(item.item_name, item.power_watt);
         const sellRate = item.quantity > 0 ? (item.amount / item.quantity) : item.rate;
-        // Discount on sale level should ideally be distributed to items, but we'll use exact item rate 
-        // minus a proportional discount if needed. The user said: "Profit/Loss per line = (Sell Rate - Purchase Rate) * Qty."
-        // We will strictly follow that. If there's a global discount on the sale, we can subtract it later or distribute it.
-        // Let's distribute the global discount percentage to the sell rate to be accurate.
         const effectiveSellRate = sellRate * (1 - (sale.discount_percent / 100));
         
         const profit = (effectiveSellRate - avgCost) * item.quantity;
         grossTradingProfit += profit;
 
-        // Grouping by item for cleaner display (optional, but requested "listing every item sold").
-        // Let's group by item name so the table isn't 1000s of rows.
-        const key = `${item.item_name}|${item.power_watt || 0}`;
+        const key = `${item.item_name}|${item.power_watt || 0}|${item.bilti_no || 'none'}`;
         const existing = tradingItems.find(t => t.key === key);
         if (existing) {
           existing.qtySold += item.quantity;
-          // Weighted average effective sell rate
           existing.totalSaleValue += (effectiveSellRate * item.quantity);
           existing.sellRate = existing.totalSaleValue / existing.qtySold;
           existing.profit += profit;
@@ -81,6 +97,7 @@ export async function GET(request: Request) {
             key,
             itemName: item.item_name,
             powerWatt: item.power_watt,
+            biltiNo: item.bilti_no || null,
             qtySold: item.quantity,
             purchaseRate: avgCost,
             sellRate: effectiveSellRate,
@@ -91,7 +108,29 @@ export async function GET(request: Request) {
       });
     });
 
-    // 5. Fetch Vouchers and JVs for Other Income and Expenses within date range
+    // Container specific metrics
+    let containerSummary: any = null;
+    if (biltiParam) {
+      const totalPurchasedCost = purchases.reduce((sum, p) => sum + p.amount, 0);
+      const totalPurchasedQty = purchases.reduce((sum, p) => sum + p.quantity, 0);
+      const totalSalesRevenue = tradingItems.reduce((sum, t) => sum + t.totalSaleValue, 0);
+      const totalSoldQty = tradingItems.reduce((sum, t) => sum + t.qtySold, 0);
+      const containerProfit = totalSalesRevenue - totalPurchasedCost;
+      const profitMargin = totalSalesRevenue > 0 ? (containerProfit / totalSalesRevenue) * 100 : 0;
+
+      containerSummary = {
+        biltiNo: biltiParam,
+        totalPurchasedCost,
+        totalPurchasedQty,
+        totalSalesRevenue,
+        totalSoldQty,
+        containerProfit,
+        profitMargin,
+        isProfitable: containerProfit >= 0
+      };
+    }
+
+    // 6. Fetch Vouchers and JVs for Other Income and Expenses within date range
     const accounts = await prisma.account.findMany({
       where: { 
         account_type: { in: ['Income Account', 'Expense Account'] } 
@@ -110,9 +149,6 @@ export async function GET(request: Request) {
       include: { voucher: true }
     });
 
-    // Calculate movements
-    // Income = Credit - Debit
-    // Expense = Debit - Credit
     const movements = new Map<string, number>();
 
     const addMovement = (accId: string, debit: number, credit: number) => {
@@ -140,7 +176,6 @@ export async function GET(request: Request) {
 
     incomeAccounts.forEach(acc => {
       const movement = movements.get(acc.id) || 0;
-      // Income increases with Credit, so Net Income = Credit - Debit = -movement
       const netIncome = -movement; 
       if (netIncome !== 0) {
         otherIncome.push({ accountName: acc.account_title, amount: netIncome });
@@ -153,7 +188,6 @@ export async function GET(request: Request) {
 
     expenseAccounts.forEach(acc => {
       const movement = movements.get(acc.id) || 0;
-      // Expense increases with Debit, so Net Expense = Debit - Credit = movement
       const netExpense = movement;
       if (netExpense !== 0) {
         expenses.push({ accountName: acc.account_title, amount: netExpense });
@@ -161,7 +195,7 @@ export async function GET(request: Request) {
       }
     });
 
-    // 6. Net Profit Calculation
+    // 7. Net Profit Calculation
     const totalSale = grossTradingProfit + totalOtherIncome;
     const netProfit = totalSale - totalExpenses;
 
@@ -169,6 +203,9 @@ export async function GET(request: Request) {
       success: true,
       data: {
         businessName,
+        biltiFilter: biltiParam,
+        availableBiltis,
+        containerSummary,
         tradingItems: tradingItems.sort((a, b) => b.profit - a.profit),
         grossTradingProfit,
         otherIncome,

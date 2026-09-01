@@ -68,17 +68,18 @@ export async function getBankAccounts(): Promise<ActionResult<Account[]>> {
 export async function getAvailableStock(): Promise<ActionResult<Array<{
   item_name: string;
   power_watt: number | null;
+  bilti_no: string | null;
   purchased: number;
   sold: number;
   available: number;
 }>>> {
   try {
     const purchases = await prisma.purchase.findMany({
-      select: { item_name: true, power_watt: true, quantity: true }
+      select: { item_name: true, power_watt: true, bilti_no: true, quantity: true }
     });
     
     const saleItems = await prisma.saleItem.findMany({
-      select: { item_name: true, power_watt: true, quantity: true }
+      select: { item_name: true, power_watt: true, bilti_no: true, quantity: true }
     });
 
     const stockMap: Record<string, any> = {};
@@ -86,9 +87,10 @@ export async function getAvailableStock(): Promise<ActionResult<Array<{
     purchases.forEach(p => {
       const name = p.item_name;
       const watt = p.power_watt ? Number(p.power_watt) : null;
-      const key = `${name.toLowerCase().trim()}::${watt ?? 'none'}`;
+      const bilti = p.bilti_no ? p.bilti_no.trim() : null;
+      const key = `${name.toLowerCase().trim()}::${watt ?? 'none'}::${bilti ?? 'none'}`;
       if (!stockMap[key]) {
-        stockMap[key] = { item_name: name, power_watt: watt, purchased: 0, sold: 0 };
+        stockMap[key] = { item_name: name, power_watt: watt, bilti_no: bilti, purchased: 0, sold: 0 };
       }
       stockMap[key].purchased += Number(p.quantity) || 0;
     });
@@ -96,9 +98,10 @@ export async function getAvailableStock(): Promise<ActionResult<Array<{
     saleItems.forEach(s => {
       const name = s.item_name;
       const watt = s.power_watt ? Number(s.power_watt) : null;
-      const key = `${name.toLowerCase().trim()}::${watt ?? 'none'}`;
+      const bilti = s.bilti_no ? s.bilti_no.trim() : null;
+      const key = `${name.toLowerCase().trim()}::${watt ?? 'none'}::${bilti ?? 'none'}`;
       if (!stockMap[key]) {
-        stockMap[key] = { item_name: name, power_watt: watt, purchased: 0, sold: 0 };
+        stockMap[key] = { item_name: name, power_watt: watt, bilti_no: bilti, purchased: 0, sold: 0 };
       }
       stockMap[key].sold += Number(s.quantity) || 0;
     });
@@ -106,6 +109,7 @@ export async function getAvailableStock(): Promise<ActionResult<Array<{
     const list = Object.values(stockMap).map(s => ({
       item_name: s.item_name,
       power_watt: s.power_watt,
+      bilti_no: s.bilti_no,
       purchased: s.purchased,
       sold: s.sold,
       available: s.purchased - s.sold
@@ -122,14 +126,18 @@ export async function getSales(): Promise<ActionResult<Sale[]>> {
     // Dynamic self-healing recalculation for all sales
     const allSales = await prisma.sale.findMany({
       include: {
+        sale_items: true,
         sale_payments: true,
-        voucher_allocations: true
+        voucher_allocations: true,
+        sale_other_credits: true
       }
     });
 
     for (const s of allSales) {
+      const itemsSubtotal = (s.sale_items || []).reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
+      const creditsTotal = (s.sale_other_credits || []).reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
       const discAmt = Number(s.discount_amount) || 0;
-      const calculatedNet = Math.max(0, s.subtotal - discAmt);
+      const calculatedNet = Math.max(0, itemsSubtotal + creditsTotal - discAmt);
       const paymentsSum = (s.sale_payments || []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
       const vouchersSum = (s.voucher_allocations || []).reduce((sum: number, v: any) => sum + (Number(v.allocatedAmount) || 0), 0);
       const trueReceived = paymentsSum + vouchersSum;
@@ -137,14 +145,22 @@ export async function getSales(): Promise<ActionResult<Sale[]>> {
       const trueStatus = trueRemaining <= 0.01 ? 'paid' : (trueReceived > 0 ? 'partial' : 'unpaid');
 
       if (
+        Math.abs(s.subtotal - itemsSubtotal) > 0.01 ||
         Math.abs(s.net_total - calculatedNet) > 0.01 ||
         Math.abs(s.total_received - trueReceived) > 0.01 ||
         Math.abs(s.remaining_balance - trueRemaining) > 0.01 ||
         s.status !== trueStatus
       ) {
+        s.subtotal = itemsSubtotal;
+        s.net_total = calculatedNet;
+        s.total_received = trueReceived;
+        s.remaining_balance = trueRemaining;
+        s.status = trueStatus;
+
         await prisma.sale.update({
           where: { id: s.id },
           data: {
+            subtotal: itemsSubtotal,
             net_total: calculatedNet,
             total_received: trueReceived,
             remaining_balance: trueRemaining,
@@ -202,11 +218,13 @@ export async function createSale(
 
     const subtotal = items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
     const creditsTotal = otherCredits.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+    const grossSubtotal = subtotal + creditsTotal;
     const discountAmount = Number(header.discount_amount) || 0;
-    const discountPercent = Number(header.discount_percent) || (subtotal > 0 ? (discountAmount / subtotal) * 100 : 0);
+    const discountPercent = Number(header.discount_percent) || (grossSubtotal > 0 ? (discountAmount / grossSubtotal) * 100 : 0);
     const netTotal = Math.max(0, subtotal - discountAmount + creditsTotal);
     const received = payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
     const remaining = netTotal - received;
+    const status = remaining <= 0.01 ? 'paid' : (received > 0 ? 'partial' : 'unpaid');
 
     const count = await prisma.sale.count();
     const invoice_no = header.invoice_no || `SL-${1000 + count + 1}`;
@@ -224,10 +242,12 @@ export async function createSale(
         net_total: netTotal,
         total_received: received,
         remaining_balance: remaining,
+        status: status,
         sale_items: {
           create: items.map(item => ({
             item_name: item.item_name,
             power_watt: item.power_watt,
+            bilti_no: item.bilti_no || null,
             quantity: item.quantity,
             rate: item.rate,
             amount: item.amount,
@@ -280,8 +300,9 @@ export async function updateSale(
 
     const subtotal = items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
     const creditsTotal = otherCredits.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+    const grossSubtotal = subtotal + creditsTotal;
     const discountAmount = Number(header.discount_amount) || 0;
-    const discountPercent = Number(header.discount_percent) || (subtotal > 0 ? (discountAmount / subtotal) * 100 : 0);
+    const discountPercent = Number(header.discount_percent) || (grossSubtotal > 0 ? (discountAmount / grossSubtotal) * 100 : 0);
     const netTotal = Math.max(0, subtotal - discountAmount + creditsTotal);
     
     // Fetch any voucher allocations attached to this sale
@@ -291,6 +312,7 @@ export async function updateSale(
     const directReceived = payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
     const totalReceived = directReceived + voucherReceived;
     const remaining = netTotal - totalReceived;
+    const status = remaining <= 0.01 ? 'paid' : (totalReceived > 0 ? 'partial' : 'unpaid');
 
     // Use transaction to completely replace child records
     const [updatedSale] = await prisma.$transaction([
@@ -307,6 +329,7 @@ export async function updateSale(
           net_total: netTotal,
           total_received: totalReceived,
           remaining_balance: remaining,
+          status: status
         }
       }),
       prisma.saleItem.deleteMany({ where: { sale_id: id } }),
@@ -317,6 +340,7 @@ export async function updateSale(
           sale_id: id,
           item_name: item.item_name,
           power_watt: item.power_watt,
+          bilti_no: item.bilti_no || null,
           quantity: item.quantity,
           rate: item.rate,
           amount: item.amount,

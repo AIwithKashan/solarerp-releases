@@ -105,7 +105,7 @@ export default async function VoucherInvoicePage({ params }: { params: Promise<{
         {/* DETAILS SECTION */}
         {!isJournal ? (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '40px' }}>
+            <div className="inv-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '40px' }}>
               <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                 <p style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 8px 0' }}>Main Account (Cash/Bank)</p>
                 <p style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>{voucherData.main_account_name}</p>
@@ -167,7 +167,7 @@ export default async function VoucherInvoicePage({ params }: { params: Promise<{
         )}
 
         {/* SIGNATURES */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px', marginTop: '80px' }}>
+        <div className="inv-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px', marginTop: '80px' }}>
           <div style={{ borderTop: '1px solid #cbd5e1', paddingTop: '12px', textAlign: 'center', color: '#64748b', fontSize: '0.9rem' }}>
             Prepared By
           </div>

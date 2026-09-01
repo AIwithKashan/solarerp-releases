@@ -156,6 +156,7 @@ export interface Purchase {
   rate:            number;
   amount:          number;
   power_watt:      number | null;
+  bilti_no?:       string | null;
   paidAmount:      number;
   remainingAmount: number;
   paymentStatus:   string;
@@ -237,6 +238,7 @@ export interface SaleItem {
   item_name:       string;
   accounting_unit: string;
   power_watt:      number | null;
+  bilti_no?:       string | null;
   quantity:        number;
   rate:            number;
   amount:          number;

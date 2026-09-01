@@ -60,7 +60,7 @@ export default async function ReceiptPage({ params }: ReceiptPageProps) {
       flexDirection: 'column',
       alignItems: 'center',
       gap: '24px'
-    }} className="print:bg-white print:text-black print:p-0 print:m-0">
+    }} className="receipt-page print:bg-white print:text-black print:p-0 print:m-0">
       
       {/* Navigation Toolbar (Hidden during print) */}
       <div style={{
@@ -178,7 +178,7 @@ export default async function ReceiptPage({ params }: ReceiptPageProps) {
           background: 'var(--c-bg-input)',
           padding: '16px 24px',
           borderRadius: '12px'
-        }} className="print:bg-gray-100 print:text-black">
+        }} className="inv-2col print:bg-gray-100 print:text-black">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--c-text-subtle)' }} className="print:text-gray-500">
               Billing Invoice

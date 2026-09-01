@@ -162,22 +162,22 @@ export default function StockModule({
                 <>
                   {data.map((item, idx) => (
                     <tr key={idx} className="data-row">
-                      <td className="td-title">
+                      <td className="td-title" data-label="Item Name">
                         {item.item_name}
                         {item.power_watt > 0 && ['watt', 'kw'].includes(item.accounting_unit.toLowerCase()) && <span style={{ color: 'var(--c-text-muted)', marginLeft: '8px', fontSize: '0.85rem' }}>({item.power_watt}W)</span>}
                       </td>
-                      <td style={{ textAlign: 'center', color: 'var(--c-text-muted)' }}>{item.total_in} <span style={{ fontSize: '0.8em' }}>{item.accounting_unit}</span></td>
-                      <td style={{ textAlign: 'center', color: 'var(--c-text-muted)' }}>{item.total_out} <span style={{ fontSize: '0.8em' }}>{item.accounting_unit}</span></td>
-                      <td style={{ textAlign: 'center', fontWeight: 700, color: item.current_stock > 0 ? '#14b8a6' : 'var(--c-danger)' }}>
+                      <td data-label="Total In" style={{ textAlign: 'center', color: 'var(--c-text-muted)' }}>{item.total_in} <span style={{ fontSize: '0.8em' }}>{item.accounting_unit}</span></td>
+                      <td data-label="Total Out" style={{ textAlign: 'center', color: 'var(--c-text-muted)' }}>{item.total_out} <span style={{ fontSize: '0.8em' }}>{item.accounting_unit}</span></td>
+                      <td data-label="Current Stock" style={{ textAlign: 'center', fontWeight: 700, color: item.current_stock > 0 ? '#14b8a6' : 'var(--c-danger)' }}>
                         {item.current_stock} <span style={{ fontSize: '0.8em', fontWeight: 400 }}>{item.accounting_unit}</span>
                       </td>
-                      <td style={{ textAlign: 'right', fontWeight: 500 }}>{formatCurrency(item.avg_cost)}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--c-text)' }}>{formatCurrency(item.stock_value)}</td>
+                      <td data-label="Avg Cost (Rs)" style={{ textAlign: 'right', fontWeight: 500 }}>{formatCurrency(item.avg_cost)}</td>
+                      <td data-label="Total Value (Rs)" style={{ textAlign: 'right', fontWeight: 600, color: 'var(--c-text)' }}>{formatCurrency(item.stock_value)}</td>
                     </tr>
                   ))}
                   <tr className="data-row" style={{ background: 'color-mix(in srgb, #14b8a6 10%, transparent)', fontWeight: 700, borderTop: '2px solid var(--c-border)' }}>
                     <td colSpan={5} style={{ textAlign: 'right', color: '#0f766e' }}>TOTAL VALUATION</td>
-                    <td style={{ textAlign: 'right', color: '#0f766e' }}>{formatCurrency(totalValue)}</td>
+                    <td data-label="Total Valuation" style={{ textAlign: 'right', color: '#0f766e' }}>{formatCurrency(totalValue)}</td>
                   </tr>
                 </>
               )}

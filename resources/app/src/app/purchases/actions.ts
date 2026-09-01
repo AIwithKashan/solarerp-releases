@@ -36,7 +36,9 @@ function calculateAmount(unit: string, qty: number, rate: number, power: number 
 export async function getSuppliers(): Promise<ActionResult<Account[]>> {
   try {
     const data = await prisma.account.findMany({
-      where: { account_type: 'Suppliers' },
+      where: { 
+        account_type: { in: ['Suppliers', 'Supplier', 'Supplier Account'] }
+      },
       orderBy: { account_title: 'asc' }
     });
     return { success: true, data: data as any };
@@ -133,6 +135,7 @@ export async function createPurchase(payload: PurchaseInsert): Promise<ActionRes
         quantity: qty,
         rate: rate,
         power_watt: finalPower,
+        bilti_no: payload.bilti_no?.trim() || null,
         amount: amount,
         paidAmount: 0,
         remainingAmount: amount,
@@ -165,6 +168,7 @@ export async function updatePurchase(payload: PurchaseUpdate): Promise<ActionRes
     if (fields.item_name) updateFields.item_name = fields.item_name.trim();
     if (fields.purchase_date) updateFields.purchase_date = fields.purchase_date.trim();
     if (fields.remarks !== undefined) updateFields.remarks = fields.remarks?.trim() || null;
+    if (fields.bilti_no !== undefined) updateFields.bilti_no = fields.bilti_no?.trim() || null;
     
     let supplierAcc;
     if (fields.supplier_id) {

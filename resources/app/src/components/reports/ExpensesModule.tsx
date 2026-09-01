@@ -192,16 +192,16 @@ export default function ExpensesModule({
                     const netAmount = t.debit - t.credit;
                     return (
                       <tr key={`${t.source_id}-${idx}`} className="data-row">
-                        <td className="td-num" style={{ whiteSpace: 'nowrap' }}>{t.txn_date}</td>
-                        <td>
+                        <td className="td-num" data-label="Date" style={{ whiteSpace: 'nowrap' }}>{t.txn_date}</td>
+                        <td data-label="Source">
                           <span className="type-badge" style={{ '--badge-color': '#ef4444' } as any}>
                             {t.source_type.replace(/_/g, ' ')}
                           </span>
                         </td>
-                        <td style={{ fontWeight: 500 }}>{t.ref_no || '-'}</td>
-                        <td className="td-title">{t.account_name}</td>
-                        <td style={{ color: 'var(--c-text-muted)', fontSize: '0.85rem' }}>{t.description || '-'}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 600, color: netAmount > 0 ? 'var(--c-danger)' : 'var(--c-text-subtle)' }}>
+                        <td data-label="Ref No" style={{ fontWeight: 500 }}>{t.ref_no || '-'}</td>
+                        <td className="td-title" data-label="Expense Account">{t.account_name}</td>
+                        <td data-label="Description" style={{ color: 'var(--c-text-muted)', fontSize: '0.85rem' }}>{t.description || '-'}</td>
+                        <td data-label="Net Amount (Rs)" style={{ textAlign: 'right', fontWeight: 600, color: netAmount > 0 ? 'var(--c-danger)' : 'var(--c-text-subtle)' }}>
                           {formatCurrency(netAmount)}
                         </td>
                       </tr>
@@ -211,7 +211,7 @@ export default function ExpensesModule({
                   {/* Period Totals Row */}
                   <tr className="data-row" style={{ background: 'var(--c-danger-light)', fontWeight: 700, borderTop: '2px solid var(--c-border)' }}>
                     <td colSpan={5} style={{ textAlign: 'right', color: '#991b1b' }}>TOTAL EXPENSES</td>
-                    <td style={{ textAlign: 'right', color: 'var(--c-danger)' }}>
+                    <td data-label="Total Expenses" style={{ textAlign: 'right', color: 'var(--c-danger)' }}>
                       {formatCurrency(totalExpense)}
                     </td>
                   </tr>

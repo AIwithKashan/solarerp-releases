@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 interface TradingItem {
   itemName: string;
   powerWatt: number | null;
+  biltiNo?: string | null;
   qtySold: number;
   purchaseRate: number;
   sellRate: number;
@@ -18,8 +19,22 @@ interface AccMovement {
   amount: number;
 }
 
+interface ContainerSummary {
+  biltiNo: string;
+  totalPurchasedCost: number;
+  totalPurchasedQty: number;
+  totalSalesRevenue: number;
+  totalSoldQty: number;
+  containerProfit: number;
+  profitMargin: number;
+  isProfitable: boolean;
+}
+
 interface ProfitLossData {
   businessName: string;
+  biltiFilter?: string;
+  availableBiltis?: string[];
+  containerSummary?: ContainerSummary | null;
   tradingItems: TradingItem[];
   grossTradingProfit: number;
   otherIncome: AccMovement[];
@@ -38,19 +53,21 @@ export default function ProfitLossModule({ defaultFrom, defaultTo }: { defaultFr
   const router = useRouter();
   const [fromDate, setFromDate] = useState(defaultFrom);
   const [toDate, setToDate] = useState(defaultTo);
+  const [selectedBilti, setSelectedBilti] = useState('');
   const [data, setData] = useState<ProfitLossData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
-  }, [fromDate, toDate]);
+  }, [fromDate, toDate, selectedBilti]);
 
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/reports/profit-loss?from=${fromDate}&to=${toDate}`);
+      const biltiParam = selectedBilti.trim() ? `&bilti=${encodeURIComponent(selectedBilti.trim())}` : '';
+      const res = await fetch(`/api/reports/profit-loss?from=${fromDate}&to=${toDate}${biltiParam}`);
       const json = await res.json();
       if (!json.success) throw new Error(json.error);
       setData(json.data);
@@ -66,11 +83,11 @@ export default function ProfitLossModule({ defaultFrom, defaultTo }: { defaultFr
   };
 
   return (
-    <div className="pl-container" style={{ padding: '20px', maxWidth: '1000px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
+    <div className="pl-container" style={{ padding: '20px', maxWidth: '1050px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
       
       {/* ─── CONTROLS (Hidden on Print) ─── */}
-      <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', background: 'var(--c-bg-card)', padding: '16px 20px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', border: '1px solid var(--c-border)' }}>
-        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+      <div className="no-print" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '24px', background: 'var(--c-bg-card)', padding: '16px 20px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', border: '1px solid var(--c-border)' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center' }}>
           <button 
             onClick={() => router.push('/reports')}
             className="btn-ghost-sm" 
@@ -103,6 +120,34 @@ export default function ProfitLossModule({ defaultFrom, defaultTo }: { defaultFr
               />
             </div>
           </div>
+
+          {/* Bilti / Container Filter */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--c-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Container / Bilti Filter</label>
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              <input 
+                type="text" 
+                list="bilti-options"
+                placeholder="All Containers (or type Bilti #)…"
+                value={selectedBilti}
+                onChange={e => setSelectedBilti(e.target.value)}
+                style={{ padding: '6px 12px', minWidth: '220px', borderRadius: '6px', border: '1px solid var(--c-border)', background: 'var(--c-bg)', color: 'var(--c-text)', fontSize: '0.9rem', outline: 'none' }}
+              />
+              <datalist id="bilti-options">
+                {(data?.availableBiltis || []).map(b => (
+                  <option key={b} value={b} />
+                ))}
+              </datalist>
+              {selectedBilti && (
+                <button 
+                  onClick={() => setSelectedBilti('')}
+                  style={{ background: 'none', border: 'none', color: 'var(--c-text-muted)', cursor: 'pointer', fontSize: '0.75rem', textDecoration: 'underline' }}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
         <button onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--c-primary)', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 600, border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}>
@@ -127,17 +172,49 @@ export default function ProfitLossModule({ defaultFrom, defaultTo }: { defaultFr
         <div className="pl-paper" style={{ background: '#fff', color: '#000', padding: '40px', borderRadius: '8px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
           
           {/* ─── HEADER ─── */}
-          <div style={{ textAlign: 'center', marginBottom: '30px', paddingBottom: '20px', borderBottom: '2px solid #e2e8f0' }}>
+          <div style={{ textAlign: 'center', marginBottom: '24px', paddingBottom: '16px', borderBottom: '2px solid #e2e8f0' }}>
             <h1 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a', margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '1px' }}>
               {data.businessName}
             </h1>
             <h2 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#334155', margin: '0 0 8px 0', letterSpacing: '0.5px' }}>
-              Profit & Loss Statement
+              {selectedBilti ? `Container P&L Statement (${selectedBilti})` : 'Profit & Loss Statement'}
             </h2>
             <p style={{ fontSize: '0.85rem', color: '#64748b', margin: 0 }}>
               Period: {new Date(fromDate).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })} – {new Date(toDate).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}
             </p>
           </div>
+
+          {/* ─── CONTAINER SUMMARY BANNER (If filtered by Bilti) ─── */}
+          {data.containerSummary && (
+            <div style={{ marginBottom: '24px', padding: '16px 20px', borderRadius: '8px', background: data.containerSummary.isProfitable ? '#f0fdf4' : '#fef2f2', border: `1.5px solid ${data.containerSummary.isProfitable ? '#bbf7d0' : '#fecaca'}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', color: data.containerSummary.isProfitable ? '#166534' : '#991b1b', letterSpacing: '0.5px' }}>
+                  📦 Container Batch: {data.containerSummary.biltiNo}
+                </span>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, padding: '2px 8px', borderRadius: '4px', background: data.containerSummary.isProfitable ? '#22c55e' : '#ef4444', color: '#fff' }}>
+                  {data.containerSummary.isProfitable ? 'NET PROFIT' : 'NET LOSS'} ({data.containerSummary.profitMargin.toFixed(1)}%)
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '14px', fontSize: '0.85rem' }}>
+                <div>
+                  <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Total Purchase Cost:</div>
+                  <strong style={{ color: '#0f172a' }}>PKR {formatPKR(data.containerSummary.totalPurchasedCost)}</strong>
+                  <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Qty: {data.containerSummary.totalPurchasedQty} units</div>
+                </div>
+                <div>
+                  <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Total Sales Revenue:</div>
+                  <strong style={{ color: '#059669' }}>PKR {formatPKR(data.containerSummary.totalSalesRevenue)}</strong>
+                  <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Sold: {data.containerSummary.totalSoldQty} units</div>
+                </div>
+                <div>
+                  <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Container Gross Margin:</div>
+                  <strong style={{ color: data.containerSummary.isProfitable ? '#16a34a' : '#dc2626', fontSize: '0.95rem' }}>
+                    PKR {formatPKR(data.containerSummary.containerProfit)}
+                  </strong>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ─── SECTION 1: TRADING PROFIT ─── */}
           <div style={{ marginBottom: '30px' }}>
@@ -169,6 +246,11 @@ export default function ProfitLossModule({ defaultFrom, defaultTo }: { defaultFr
                       <td style={{ padding: '6px 8px', color: '#64748b' }}>{idx + 1}</td>
                       <td style={{ padding: '6px 8px', fontWeight: 600 }}>
                         {item.itemName} {item.powerWatt ? `(${item.powerWatt}W)` : ''}
+                        {item.biltiNo && (
+                          <span style={{ marginLeft: '6px', fontSize: '9px', padding: '1px 5px', borderRadius: '3px', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1' }}>
+                            📦 {item.biltiNo}
+                          </span>
+                        )}
                       </td>
                       <td style={{ padding: '6px 8px', textAlign: 'right' }}>{item.qtySold}</td>
                       <td style={{ padding: '6px 8px', textAlign: 'right' }}>{formatPKR(item.purchaseRate)}</td>

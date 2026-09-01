@@ -6,3 +6,11 @@ dev.db
 backup-config.json
 .system_generated/
 upload_github_release.py
+upload_final_release.py
+.env
+.env.local
+*.env
+*.env.local
+resources/app/.env
+resources/app/.env.local
+

@@ -545,16 +545,16 @@ function ProductTable({
                 return (
                   <tr key={prod.id} className="data-row">
                     <td className="td-num">{i + 1}</td>
-                    <td className="td-title">{prod.item_name}</td>
-                    <td>
+                    <td className="td-title" data-label="Item Name">{prod.item_name}</td>
+                    <td data-label="Category">
                       <span className="type-badge" style={{ '--badge-color': meta?.color ?? '#6b7280' } as React.CSSProperties}>
                         <Icon size={12} />{meta?.label ?? prod.category}
                       </span>
                     </td>
-                    <td>
+                    <td data-label="Accounting Unit">
                       <span className="area-tag" style={{ color: 'var(--c-text)' }}>{prod.accounting_unit}</span>
                     </td>
-                    <td className="td-contact" style={{ display: 'table-cell', maxWidth: '300px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                    <td className="td-contact" data-label="Remarks" style={{ display: 'table-cell', maxWidth: '300px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                       {prod.remarks ? (
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                           <FileText size={12} className="input-icon-static" />

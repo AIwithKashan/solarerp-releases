@@ -1,12 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Grid3X3, Users, Package, ShoppingCart, TrendingUp, Banknote,
-  Settings, LineChart, QrCode, Smartphone, Wifi, X, ChevronRight, Menu
-} from 'lucide-react';
+import { QrCode, Wifi, X } from 'lucide-react';
 
 interface LicenseStatus {
   hwid: string;
@@ -18,9 +14,6 @@ interface LicenseStatus {
 }
 
 export default function LicenseGuard({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const router = useRouter();
-
   const [status, setStatus] = useState<LicenseStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [remainingSecs, setRemainingSecs] = useState<number>(0);
@@ -31,7 +24,6 @@ export default function LicenseGuard({ children }: { children: React.ReactNode }
 
   // Mobile ERP integration state
   const [showQrModal, setShowQrModal] = useState(false);
-  const [showMoreSheet, setShowMoreSheet] = useState(false);
   const [networkUrl, setNetworkUrl] = useState('');
   const [networkIp, setNetworkIp] = useState('');
 
@@ -243,21 +235,6 @@ export default function LicenseGuard({ children }: { children: React.ReactNode }
   // 3. TRIAL OR TIME-BOUND LICENSE ACTIVE: SHOW TIMER BANNER WITH PASTE KEY BUTTON
   const isTimeBoundActive = status?.isActivated && !status.isLifetime;
 
-  const MOBILE_NAV_ITEMS = [
-    { label: 'Dash', icon: Grid3X3, href: '/' },
-    { label: 'Sales', icon: TrendingUp, href: '/sales' },
-    { label: 'Products', icon: Package, href: '/products' },
-    { label: 'Accounts', icon: Users, href: '/accounts' },
-    { label: 'More', icon: Menu, href: '#', isMore: true }
-  ];
-
-  const MORE_MENU_ITEMS = [
-    { label: 'Purchases', icon: ShoppingCart, href: '/purchases' },
-    { label: 'Vouchers', icon: Banknote, href: '/vouchers' },
-    { label: 'Reports', icon: LineChart, href: '/reports' },
-    { label: 'Settings', icon: Settings, href: '/settings' },
-  ];
-
   const cls = (...args: (string | boolean | undefined | null)[]) => args.filter(Boolean).join(' ');
 
   return (
@@ -440,81 +417,15 @@ export default function LicenseGuard({ children }: { children: React.ReactNode }
         </div>
       )}
 
-      {/* Main ERP App Content Shell */}
-      <div style={{ position: 'relative', minHeight: 'calc(100vh - 40px)', paddingBottom: '70px' }}>
+      {/* Main ERP App Content Shell.
+          Mobile navigation lives in <MobileShell /> (mounted globally from
+          layout.tsx) so it renders in *every* license state — the copy that
+          used to live here never rendered for activated/lifetime installs,
+          which returned <>{children}</> above. Bottom padding for the tab
+          bar is handled in mobile.css via safe-area-aware rules. */}
+      <div style={{ position: 'relative', minHeight: 'calc(100vh - 40px)' }}>
         {children}
-
-        {/* 2. Mobile Bottom Navigation (Visible on Mobile via CSS) */}
-        <nav className="mobile-bottom-nav">
-          {MOBILE_NAV_ITEMS.map(item => {
-            const Icon = item.icon;
-            const active = item.href === '/' ? pathname === '/' : pathname === item.href;
-            return (
-              <button
-                key={item.label}
-                onClick={item.isMore ? () => setShowMoreSheet(true) : () => router.push(item.href)}
-                className={cls('nav-tab', active && 'active')}
-                style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-              >
-                <Icon size={active ? 22 : 20} strokeWidth={active ? 2.5 : 2} />
-                <span style={{ fontWeight: active ? 700 : 500 }}>{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
       </div>
-
-      {/* Mobile "More" Menu Sheet Drawer */}
-      <AnimatePresence>
-        {showMoreSheet && (
-          <>
-            <motion.div
-              className="sheet-overlay open"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowMoreSheet(false)}
-            />
-            <motion.div
-              className="sheet-content open"
-              style={{ paddingBottom: '20px' }}
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            >
-              <div className="sheet-header">
-                <h3 className="sheet-title">Explore ERP Modules</h3>
-                <button className="btn-ghost-sm" onClick={() => setShowMoreSheet(false)} style={{ margin: 0 }}>
-                  <X size={18} />
-                </button>
-              </div>
-              <div className="sheet-body" style={{ padding: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                {MORE_MENU_ITEMS.map(item => {
-                  const Icon = item.icon;
-                  const active = pathname === item.href;
-                  return (
-                    <button
-                      key={item.label}
-                      onClick={() => { router.push(item.href); setShowMoreSheet(false); }}
-                      style={{
-                        padding: '16px', borderRadius: '12px', border: '1.5px solid var(--c-border)',
-                        background: active ? 'var(--c-primary-light)' : 'var(--c-bg-input)',
-                        color: active ? 'var(--c-primary-dark)' : 'var(--c-text)',
-                        display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'left',
-                        cursor: 'pointer', transition: 'var(--transition)'
-                      }}
-                    >
-                      <Icon size={20} strokeWidth={2} />
-                      <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{item.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
 
       {/* Desktop Mobile Connection QR Modal */}
       <AnimatePresence>

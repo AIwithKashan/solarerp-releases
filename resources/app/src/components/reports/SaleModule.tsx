@@ -190,19 +190,19 @@ export default function SaleModule({
                 <>
                   {data.map((s, idx) => (
                     <tr key={idx} className="data-row">
-                      <td className="td-num" style={{ whiteSpace: 'nowrap' }}>{s.sale_date}</td>
-                      <td style={{ fontWeight: 500 }}>{s.invoice_no}</td>
-                      <td className="td-title">{s.customer_name || 'Walk-in Customer'}</td>
-                      <td style={{ textAlign: 'right', color: 'var(--c-text-muted)' }}>{formatCurrency(s.subtotal)}</td>
-                      <td style={{ textAlign: 'right', color: 'var(--c-danger)' }}>{s.discount_amount > 0 ? formatCurrency(s.discount_amount) : '-'}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--c-text)' }}>{formatCurrency(s.net_total)}</td>
+                      <td className="td-num" data-label="Date" style={{ whiteSpace: 'nowrap' }}>{s.sale_date}</td>
+                      <td data-label="Invoice No" style={{ fontWeight: 500 }}>{s.invoice_no}</td>
+                      <td className="td-title" data-label="Customer">{s.customer_name || 'Walk-in Customer'}</td>
+                      <td data-label="Subtotal (Rs)" style={{ textAlign: 'right', color: 'var(--c-text-muted)' }}>{formatCurrency(s.subtotal)}</td>
+                      <td data-label="Discount (Rs)" style={{ textAlign: 'right', color: 'var(--c-danger)' }}>{s.discount_amount > 0 ? formatCurrency(s.discount_amount) : '-'}</td>
+                      <td data-label="Net Total (Rs)" style={{ textAlign: 'right', fontWeight: 600, color: 'var(--c-text)' }}>{formatCurrency(s.net_total)}</td>
                     </tr>
                   ))}
                   <tr className="data-row" style={{ background: 'color-mix(in srgb, #ec4899 10%, transparent)', fontWeight: 700, borderTop: '2px solid var(--c-border)' }}>
                     <td colSpan={3} style={{ textAlign: 'right', color: '#be185d' }}>TOTAL SALES</td>
-                    <td style={{ textAlign: 'right', color: 'var(--c-text-muted)' }}>{formatCurrency(totals.subtotal)}</td>
-                    <td style={{ textAlign: 'right', color: 'var(--c-danger)' }}>{formatCurrency(totals.discount)}</td>
-                    <td style={{ textAlign: 'right', color: '#be185d' }}>{formatCurrency(totals.net)}</td>
+                    <td data-label="Subtotal" style={{ textAlign: 'right', color: 'var(--c-text-muted)' }}>{formatCurrency(totals.subtotal)}</td>
+                    <td data-label="Discount" style={{ textAlign: 'right', color: 'var(--c-danger)' }}>{formatCurrency(totals.discount)}</td>
+                    <td data-label="Net Sales" style={{ textAlign: 'right', color: '#be185d' }}>{formatCurrency(totals.net)}</td>
                   </tr>
                 </>
               )}

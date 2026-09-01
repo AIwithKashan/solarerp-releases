@@ -2,7 +2,7 @@
 ; Generated & Maintained by AIwithKashan (03341911680)
 
 #define MyAppName "SolarERP"
-#define MyAppVersion "2.0.0"
+#define MyAppVersion "2.0.5"
 #define MyAppPublisher "AIwithKashan"
 #define MyAppContact "03341911680"
 #define MyAppExeName "SolarERP.exe"

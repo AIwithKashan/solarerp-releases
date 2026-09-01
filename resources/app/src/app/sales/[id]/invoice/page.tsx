@@ -292,7 +292,7 @@ export default async function SalesInvoicePage({ params }: { params: Promise<{ i
         )}
 
         {/* Summary Details & Balance Breakdown */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '20px', borderTop: '1px solid var(--c-border)', paddingTop: '20px', marginBottom: '32px' }}>
+        <div className="inv-summary" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '20px', borderTop: '1px solid var(--c-border)', paddingTop: '20px', marginBottom: '32px' }}>
           
           {/* Payment Receipts Logged */}
           <div style={{ flex: '1 1 300px' }}>
@@ -322,9 +322,18 @@ export default async function SalesInvoicePage({ params }: { params: Promise<{ i
           </div>
 
           {/* Ledger calculations */}
-          <div style={{ display: 'grid', gridTemplateColumns: '140px 160px', gap: '8px', fontSize: '0.95rem', minWidth: '300px' }}>
+          <div className="inv-ledger" style={{ display: 'grid', gridTemplateColumns: '140px 160px', gap: '8px', fontSize: '0.95rem', minWidth: '300px' }}>
             <div style={{ color: 'var(--c-text-muted)', fontWeight: 600 }}>Items Subtotal:</div>
             <div style={{ textAlign: 'right', color: 'var(--c-text)' }}>PKR {formatPKR(sale.subtotal)}</div>
+            
+            {sale.sale_other_credits && sale.sale_other_credits.length > 0 && (
+              <>
+                <div style={{ color: 'var(--c-text-muted)', fontWeight: 600 }}>Custom Charges:</div>
+                <div style={{ textAlign: 'right', color: 'var(--c-text)' }}>
+                  PKR {formatPKR(sale.sale_other_credits.reduce((sum, c) => sum + (Number(c.amount) || 0), 0))}
+                </div>
+              </>
+            )}
             
             <div style={{ color: 'var(--c-text-muted)', fontWeight: 600 }}>Discount ({sale.discount_percent}%):</div>
             <div style={{ textAlign: 'right', color: '#ef4444' }}>- PKR {formatPKR(sale.discount_amount)}</div>

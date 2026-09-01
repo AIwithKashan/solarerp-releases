@@ -54,6 +54,7 @@ model Purchase {
   rate            Float
   amount          Float
   power_watt      Float?
+  bilti_no        String?
   paidAmount      Float    @default(0)
   remainingAmount Float    @default(0)
   paymentStatus   String?  @default("unpaid")
@@ -100,6 +101,7 @@ model SaleItem {
   item_name       String
   accounting_unit String
   power_watt      Float?
+  bilti_no        String?
   quantity        Float
   rate            Float
   amount          Float

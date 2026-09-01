@@ -1,0 +1,1264 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   SolarERP — Mobile-first / touch-native responsive layer
+   ---------------------------------------------------------------------------
+   Loaded AFTER globals.css (see src/app/layout.tsx) so it always wins the
+   cascade without needing specificity hacks.
+
+   Contents
+     1.  Backfilled design tokens (referenced in JSX but never declared)
+     2.  Backfilled utility classes (same story)
+     3.  Native touch base behaviour
+     4.  Fluid typography
+     5.  Tablet — split-view layouts (768px … 1199px)
+     6.  Phone — app-native layout (… 767px)
+     7.  Compact phone (… 380px)
+     8.  Landscape phones
+     9.  Print + reduced motion
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+
+/* ───────────────────────────────────────────────────────────────────────────
+   1.  BACKFILLED DESIGN TOKENS
+   These variables are used across the modules (dashboard metric cards,
+   report sheets, badges) but were never declared, so they resolved to
+   nothing and rendered as transparent / inherited colour.
+   ─────────────────────────────────────────────────────────────────────── */
+:root {
+  --c-surface:        #ffffff;
+  --c-bg-overlay:     #ffffff;
+  --c-emerald:        #10b981;
+  --c-success:        #10b981;
+  --c-bg-success:     #d1fae5;
+  --c-warning:        #f59e0b;
+  --c-warning-light:  #fef3c7;
+
+  /* Touch + chrome metrics */
+  --tap-min:          44px;
+  --mobile-nav-h:     62px;
+  --safe-top:         env(safe-area-inset-top, 0px);
+  --safe-bottom:      env(safe-area-inset-bottom, 0px);
+  --safe-left:        env(safe-area-inset-left, 0px);
+  --safe-right:       env(safe-area-inset-right, 0px);
+  --ease-native:      cubic-bezier(.32, .72, 0, 1);
+}
+
+[data-theme="dark"] {
+  --c-surface:        #1e293b;
+  --c-bg-overlay:     #1e293b;
+  --c-bg-success:     #064e3b;
+  --c-warning:        #fbbf24;
+  --c-warning-light:  #422006;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   2.  BACKFILLED UTILITY CLASSES
+   The JSX references a small set of Tailwind-ish helpers, but Tailwind is
+   not installed in this project — these class names were inert. Defining
+   them here restores the intended layout (notably the sale/purchase
+   line-item grids and the two payment modals, which had no styling at all).
+   ─────────────────────────────────────────────────────────────────────── */
+
+.animate-fade-in { animation: mFadeIn .35s var(--ease-native) both; }
+@keyframes mFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+.animate-pulse { animation: mPulse 1.8s ease-in-out infinite; }
+@keyframes mPulse { 50% { opacity: .55; } }
+
+.animate-spin { animation: spin .8s linear infinite; }
+
+.hide-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+.hide-scroll::-webkit-scrollbar { display: none; }
+
+.font-mono { font-variant-numeric: tabular-nums; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; }
+.font-bold { font-weight: 700; }
+.text-red-500 { color: var(--c-danger); }
+.text-emerald-500 { color: var(--c-primary); }
+
+.section-title {
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--c-text);
+  letter-spacing: -.2px;
+}
+
+.form-section {
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 20px;
+}
+
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-input {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--c-bg-input);
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--radius-sm);
+  color: var(--c-text);
+  font-size: .9rem;
+  outline: none;
+  transition: var(--transition);
+}
+.form-input:focus {
+  border-color: var(--c-border-focus);
+  background: var(--c-bg-card);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, .15);
+}
+
+.power-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: .7rem;
+  font-weight: 700;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.read-only { opacity: .85; cursor: default; }
+
+/* Minimal spacing/grid subset actually referenced by the modules */
+.grid { display: grid; }
+.grid-cols-1 { grid-template-columns: 1fr; }
+.gap-4 { gap: 16px; }
+.gap-6 { gap: 24px; }
+.mb-4 { margin-bottom: 16px; }
+.mb-6 { margin-bottom: 24px; }
+.mt-6 { margin-top: 24px; }
+.items-start { align-items: flex-start; }
+.space-y-3 > * + * { margin-top: 12px; }
+.space-y-4 > * + * { margin-top: 16px; }
+.space-y-6 > * + * { margin-top: 24px; }
+.hover\:scale-105 { transition: transform .18s var(--ease-native); }
+@media (hover: hover) and (pointer: fine) {
+  .hover\:scale-105:hover { transform: scale(1.05); }
+}
+
+/* `md:` variants only apply from the tablet breakpoint up */
+@media (min-width: 768px) {
+  .md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .md\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .md\:col-span-1 { grid-column: span 1; }
+  .md\:col-span-2 { grid-column: span 2; }
+  .md\:col-span-3 { grid-column: span 3; }
+}
+
+/* ── Dialogs: `.modal-*` was referenced by the two payment modals but never
+      defined, so they rendered as bare unstyled divs over the page. ────── */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(2, 6, 23, .55);
+  backdrop-filter: blur(6px);
+  animation: mFadeIn .2s ease both;
+}
+
+.modal-content {
+  width: 100%;
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  animation: mDialogIn .26s var(--ease-native) both;
+}
+@keyframes mDialogIn {
+  from { opacity: 0; transform: translateY(12px) scale(.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--c-border);
+}
+.modal-title { font-size: 1.05rem; font-weight: 700; color: var(--c-text); }
+.modal-body { flex: 1; overflow-y: auto; padding: 22px; -webkit-overflow-scrolling: touch; }
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 22px;
+  border-top: 1px solid var(--c-border);
+  background: var(--c-bg-input);
+}
+
+.btn-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--c-text-muted);
+  transition: var(--transition);
+}
+.btn-close:hover { background: var(--c-danger-light); color: var(--c-danger); }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--tap-min);
+  padding: 10px 18px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--radius-sm);
+  background: var(--c-bg-input);
+  color: var(--c-text);
+  font-size: .9rem;
+  font-weight: 600;
+  transition: var(--transition);
+}
+
+
+/* ───────────────────────────────────────────────────────────────────────────
+   3.  NATIVE TOUCH BASE
+   ─────────────────────────────────────────────────────────────────────── */
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  /* Kill the grey flash and the rubber-band "page behind the page" feel. */
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+  /* No sideways drift on any screen — inner regions opt back in below. */
+  overflow-x: hidden;
+}
+
+/* Momentum scrolling for every scroll container in the app */
+.app-content,
+.sheet-body,
+.modal-body,
+.table-scroll,
+.stats-bar,
+.filter-chips,
+.combobox-dropdown,
+.sidebar-nav { -webkit-overflow-scrolling: touch; }
+
+/* Horizontal strips should snap like a native carousel */
+.stats-bar,
+.filter-chips {
+  scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain;
+}
+.stats-bar > *,
+.filter-chips > * { scroll-snap-align: start; }
+
+/* Never let a long unbroken string (account name, NTN, URL) blow out the
+   viewport width on a 320px phone. */
+.header-title,
+.card-title,
+.td-title,
+.stat-count,
+.empty-sub,
+.form-title { overflow-wrap: anywhere; }
+
+/* Only run hover affordances on real pointers — on touch these stick
+   after a tap and look broken. */
+@media (hover: none) {
+  .stat-card:hover,
+  .account-card:hover { transform: none; box-shadow: var(--shadow-sm); }
+  .btn-primary:hover:not(:disabled) { transform: none; }
+  .network-widget:hover { transform: none; }
+}
+
+/* Visible focus for keyboard + switch-control users */
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--c-primary);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   4.  FLUID TYPOGRAPHY
+   One scale that reads correctly from 320px to a 1440px desktop without a
+   single extra breakpoint.
+   ─────────────────────────────────────────────────────────────────────── */
+
+.header-title   { font-size: clamp(1.02rem, .92rem + .55vw, 1.15rem); }
+.header-date    { font-size: clamp(.68rem, .64rem + .18vw, .75rem); }
+.form-title     { font-size: clamp(.98rem, .92rem + .35vw, 1.05rem); }
+.form-subtitle  { font-size: clamp(.76rem, .73rem + .15vw, .82rem); }
+.section-title  { font-size: clamp(.95rem, .9rem + .3vw, 1.02rem); }
+.sheet-title    { font-size: clamp(1rem, .93rem + .5vw, 1.15rem); }
+.stat-count     { font-size: clamp(1.15rem, 1rem + 1.1vw, 1.4rem); }
+.stat-label     { font-size: clamp(.68rem, .65rem + .15vw, .72rem); }
+.card-title     { font-size: clamp(.9rem, .86rem + .2vw, .95rem); }
+.brand-title    { font-size: clamp(1.3rem, 1.1rem + 1.4vw, 1.6rem); }
+.login-heading  { font-size: clamp(1.25rem, 1.1rem + .9vw, 1.5rem); }
+.empty-title    { font-size: clamp(.94rem, .9rem + .25vw, 1rem); }
+.data-table     { font-size: clamp(.82rem, .8rem + .15vw, .875rem); }
+
+
+/* ───────────────────────────────────────────────────────────────────────────
+   5.  TABLET — 768px … 1199px  (iPad Mini / Air / Pro portrait, Galaxy Tab)
+   The sidebar stays as an icon rail so the content column keeps its full
+   width, and every grid is retuned to a genuine two-column split view
+   instead of a single stretched column with dead whitespace.
+   ─────────────────────────────────────────────────────────────────────── */
+
+@media (min-width: 768px) and (max-width: 1199px) {
+  :root { --sidebar-w: 218px; }
+
+  .app-content { padding: 20px 22px; gap: 18px; }
+
+  /* Two real columns instead of auto-fit collapsing to one */
+  .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+
+  /* Metric / stat strips: 2-up grid reads better than a scroll strip here */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
+    gap: 12px;
+  }
+  .stats-bar .stat-card { white-space: normal; flex-shrink: 1; }
+
+  .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 18px; }
+
+  /* The large entry sheets stay full-screen on tablets — the sale /
+     purchase forms are multi-section and dense, so the extra room beats a
+     narrow side panel. Only the small confirmation dialogs get boxed. */
+  .modal-content { max-width: min(720px, 92vw); }
+
+  /* Report modules ship their own two-pane layouts — give the checklist
+     rail a fixed track so the paper pane gets the remaining space. */
+  .db-wrapper, .dc-wrapper, .coa-wrapper { gap: 18px; }
+  .db-sidebar, .dc-layout > aside, .coa-sidebar { flex: 0 0 220px; }
+}
+
+@media (min-width: 1024px) and (max-width: 1199px) {
+  .form-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .stats-bar { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* Tablet in landscape has the width for the full labelled sidebar. */
+@media (min-width: 1024px) and (max-width: 1199px) and (orientation: landscape) {
+  :root { --sidebar-w: 240px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   6.  PHONE — app-native layout (… 767px)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+
+  /* ── 6.1 Shell ──────────────────────────────────────────────────────── */
+
+  /* The 68px icon rail costs ~21% of a 320px screen and its tooltips are
+     unusable by touch. Navigation moves to the bottom tab bar instead. */
+  .sidebar { display: none !important; }
+
+  .app-shell { display: block; min-height: 100dvh; }
+  .app-main { display: block; min-width: 0; }
+
+  .app-content {
+    padding: 14px calc(14px + var(--safe-left)) 0 calc(14px + var(--safe-right));
+    /* Clear the tab bar + the iPhone home indicator. */
+    padding-bottom: calc(var(--mobile-nav-h) + var(--safe-bottom) + 20px);
+    gap: 14px;
+    overflow-y: visible;
+  }
+
+  /* ── 6.2 Header ─────────────────────────────────────────────────────── */
+
+  .app-header {
+    height: auto;
+    min-height: 56px;
+    padding: calc(10px + var(--safe-top)) calc(14px + var(--safe-right)) 10px calc(14px + var(--safe-left));
+    gap: 10px;
+    /* Frosted, like a native large-title bar collapsing on scroll. */
+    background: color-mix(in srgb, var(--c-header-bg) 88%, transparent);
+    backdrop-filter: saturate(180%) blur(14px);
+    -webkit-backdrop-filter: saturate(180%) blur(14px);
+  }
+
+  .header-left { min-width: 0; }
+  .header-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: -.2px;
+  }
+
+  .header-right { gap: 8px; flex-shrink: 0; }
+
+  .icon-btn {
+    width: var(--tap-min);
+    height: var(--tap-min);
+    border-radius: var(--radius-md);
+  }
+
+  .user-chip { padding: 5px; border-radius: 50%; }
+  .user-avatar { width: 32px; height: 32px; }
+
+  /* Notifications are a dead-end button today and the space is precious. */
+  .app-header .icon-btn[title="Notifications"] { display: none; }
+
+  /* ── 6.3 Primary action becomes a thumb-zone FAB ────────────────────── */
+
+  /* Every module puts exactly one "Add …" button at the far right of the
+     header — the worst possible spot for a one-handed reach. Promote it to
+     a floating action button above the tab bar. Text label is dropped; the
+     icon plus the module context carries the meaning. */
+  .app-header .header-right > .btn-primary {
+    position: fixed;
+    right: calc(16px + var(--safe-right));
+    bottom: calc(var(--mobile-nav-h) + var(--safe-bottom) + 16px);
+    z-index: 900;
+    width: 56px;
+    height: 56px;
+    min-height: 56px;
+    padding: 0 !important;
+    border-radius: 50%;
+    box-shadow: 0 8px 24px rgba(16, 185, 129, .45), 0 2px 6px rgba(0, 0, 0, .2);
+  }
+  .app-header .header-right > .btn-primary > span { display: none; }
+  .app-header .header-right > .btn-primary:active:not(:disabled) { transform: scale(.94); }
+
+  /* ── 6.4 Bottom tab bar ─────────────────────────────────────────────── */
+
+  .mobile-bottom-nav {
+    height: calc(var(--mobile-nav-h) + var(--safe-bottom));
+    padding: 0 4px var(--safe-bottom);
+    background: color-mix(in srgb, var(--c-bg-card) 92%, transparent);
+    backdrop-filter: saturate(180%) blur(18px);
+    -webkit-backdrop-filter: saturate(180%) blur(18px);
+    box-shadow: 0 -1px 0 var(--c-border);
+    border-top: none;
+    z-index: 1000;
+  }
+
+  .nav-tab {
+    min-width: var(--tap-min);
+    min-height: var(--mobile-nav-h);
+    gap: 3px;
+    padding: 6px 2px;
+    background: none;
+    border: none;
+    transition: color .16s var(--ease-native);
+  }
+  .nav-tab-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 24px;
+    transition: transform .22s var(--ease-native);
+  }
+  .nav-tab.active .nav-tab-icon { transform: translateY(-1px); }
+  .nav-tab-label {
+    font-size: .66rem;
+    font-weight: 500;
+    letter-spacing: .01em;
+    line-height: 1;
+  }
+  .nav-tab.active .nav-tab-label { font-weight: 700; }
+  .nav-tab:active { opacity: .6; }
+}
+
+/* ── 6.5 "More" bottom sheet (MobileShell) ────────────────────────────── */
+
+.ms-sheet-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 1010;
+  background: rgba(2, 6, 23, .45);
+  backdrop-filter: blur(3px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .28s var(--ease-native), visibility .28s var(--ease-native);
+}
+.ms-sheet-scrim.open { opacity: 1; visibility: visible; }
+
+.ms-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1011;
+  padding: 6px 16px calc(16px + var(--safe-bottom));
+  background: var(--c-bg-card);
+  border-top: 1px solid var(--c-border);
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, .22);
+  transform: translateY(102%);
+  transition: transform .34s var(--ease-native);
+  will-change: transform;
+}
+.ms-sheet.open { transform: translateY(0); }
+
+/* Native grab handle — also a 44px-tall dismiss target. */
+.ms-sheet-grip {
+  display: block;
+  width: 100%;
+  height: 26px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  position: relative;
+}
+.ms-sheet-grip::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 42px;
+  height: 5px;
+  border-radius: 99px;
+  background: var(--c-border);
+}
+
+.ms-sheet-title {
+  margin: 2px 0 12px;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--c-text-subtle);
+}
+
+.ms-sheet-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ms-sheet-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 84px;
+  padding: 14px;
+  text-align: left;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--radius-md);
+  background: var(--c-bg-input);
+  color: var(--c-text);
+  transition: transform .16s var(--ease-native), background .16s ease;
+}
+.ms-sheet-item:active { transform: scale(.97); }
+.ms-sheet-item.active {
+  background: var(--c-primary-light);
+  border-color: var(--c-primary);
+  color: var(--c-primary-dark);
+}
+.ms-sheet-item-icon { color: var(--c-primary); display: flex; }
+.ms-sheet-item.active .ms-sheet-item-icon { color: var(--c-primary-dark); }
+.ms-sheet-item-label { font-size: .9rem; font-weight: 700; }
+.ms-sheet-item-hint { font-size: .7rem; color: var(--c-text-muted); }
+.ms-sheet-item.active .ms-sheet-item-hint { color: var(--c-primary-dark); opacity: .8; }
+
+@media (min-width: 768px) {
+  .ms-sheet, .ms-sheet-scrim { display: none; }
+}
+
+@media (max-width: 767px) {
+
+  /* ── 6.6 Summary strip ──────────────────────────────────────────────── */
+
+  /* Edge-to-edge snapping carousel — the cards bleed to the screen edge so
+     it reads as "there is more to the right". */
+  .stats-bar {
+    gap: 10px;
+    margin: 0 -14px;
+    padding: 2px calc(14px + var(--safe-right)) 6px calc(14px + var(--safe-left));
+    scroll-padding-left: 14px;
+    scrollbar-width: none;
+  }
+  .stats-bar::-webkit-scrollbar { display: none; }
+  .stat-card {
+    min-width: 168px;
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+  }
+  .stat-icon { width: 34px; height: 34px; }
+
+  /* ── 6.7 Toolbars & filters ─────────────────────────────────────────── */
+
+  .table-toolbar { padding: 12px 14px; gap: 10px; }
+  .toolbar-left { width: 100%; }
+  .search-wrapper { min-width: 0; width: 100%; }
+  .toolbar-right { width: 100%; justify-content: space-between; }
+
+  /* Table/grid switch is meaningless once rows become cards. */
+  .view-toggle { display: none; }
+
+  .filter-chips {
+    margin: 0 -14px;
+    padding: 0 calc(14px + var(--safe-right)) 8px calc(14px + var(--safe-left));
+    scrollbar-width: none;
+  }
+  .filter-chips::-webkit-scrollbar { display: none; }
+  .filter-chip { padding: 9px 16px; min-height: 38px; font-size: .82rem; }
+
+  /* ── 6.8 Forms ──────────────────────────────────────────────────────── */
+
+  .account-form { padding: 16px; border-radius: var(--radius-md); }
+  .form-header { gap: 12px; margin-bottom: 18px; padding-bottom: 14px; }
+  .form-grid { grid-template-columns: 1fr !important; gap: 14px; }
+
+  /* 16px is the threshold below which iOS Safari zooms the viewport on
+     focus — the single most common "mobile web feels broken" glitch. */
+  .field-input,
+  .form-input,
+  .select-trigger,
+  .field-textarea,
+  input, select, textarea {
+    font-size: 16px !important;
+    min-height: var(--tap-min);
+  }
+  .field-input { padding: 12px 14px 12px 40px; }
+  .combobox-root .field-input { padding-right: 68px; }
+  .field-textarea { min-height: 96px; }
+
+  .field-label { font-size: .72rem; }
+
+  /* Sticky, full-width action row that always sits in the thumb zone. */
+  .form-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    flex-direction: column-reverse;
+    gap: 8px;
+    margin: 4px -16px -16px;
+    padding: 12px 16px calc(12px + var(--safe-bottom));
+    background: color-mix(in srgb, var(--c-bg-card) 94%, transparent);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid var(--c-border);
+  }
+  .form-actions > * { width: 100%; min-height: 48px; }
+
+  .btn-primary, .btn-secondary, .btn { min-height: 48px; }
+  .btn-primary:active:not(:disabled),
+  .btn-secondary:active { transform: scale(.985); }
+
+  /* Icon-only controls: grow the real box rather than overlaying invisible
+     hit areas, which would steal taps from adjacent buttons. */
+  .btn-ghost-sm, .action-btn { width: 42px; height: 42px; border-radius: var(--radius-sm); }
+  .action-btn:active, .btn-ghost-sm:active { transform: scale(.9); }
+  .row-actions { gap: 10px; }
+  .combobox-chevron { right: 6px; padding: 11px 8px; }
+  .combobox-clear { right: 38px; width: 30px; height: 30px; }
+
+  /* ── 6.9 Comboboxes ─────────────────────────────────────────────────── */
+
+  .combobox-dropdown {
+    max-height: 46vh;
+    border-radius: var(--radius-md);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, .22);
+  }
+  .combobox-item, .combobox-custom-row { min-height: var(--tap-min); padding: 12px; font-size: .9rem; }
+}
+
+@media (max-width: 767px) {
+
+  /* ── 6.10 Entry sheets become true bottom sheets ────────────────────── */
+
+  .sheet-overlay { background: rgba(2, 6, 23, .5); }
+
+  .sheet-content {
+    top: auto;
+    height: 96dvh;
+    max-height: 96dvh;
+    border-radius: 22px 22px 0 0;
+    box-shadow: 0 -14px 44px rgba(0, 0, 0, .3);
+    transition: transform .38s var(--ease-native);
+    will-change: transform;
+  }
+
+  /* Grab handle above the title, like a native sheet. */
+  .sheet-header {
+    position: relative;
+    flex-shrink: 0;
+    padding: 22px 16px 14px;
+    gap: 10px;
+  }
+  .sheet-header::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 42px;
+    height: 5px;
+    border-radius: 99px;
+    background: var(--c-border);
+  }
+  .sheet-header .btn-ghost-sm { margin-left: auto; }
+
+  .sheet-body {
+    padding: 16px calc(14px + var(--safe-left)) calc(20px + var(--safe-bottom)) calc(14px + var(--safe-right)) !important;
+    overscroll-behavior: contain;
+  }
+
+  .sheet-footer {
+    flex-direction: column-reverse;
+    gap: 8px;
+    padding: 12px 16px calc(12px + var(--safe-bottom));
+  }
+  .sheet-footer > * { width: 100%; }
+
+  /* Inside a sheet the form's own sticky action row is redundant chrome. */
+  .sheet-body .form-actions {
+    position: static;
+    margin: 8px 0 0;
+    padding: 0;
+    background: none;
+    backdrop-filter: none;
+    border-top: none;
+  }
+
+  /* The nested "card" sections inside the sale/purchase forms lose their
+     heavy chrome so the form reads as one continuous scroll. */
+  .sheet-body .account-table-wrap { padding: 14px !important; border-radius: var(--radius-md); }
+
+  /* ── 6.11 Dialogs become bottom sheets ──────────────────────────────── */
+
+  .modal-backdrop { padding: 0; align-items: flex-end; }
+  .modal-content {
+    max-width: 100% !important;
+    width: 100% !important;
+    max-height: 92dvh;
+    border-radius: 22px 22px 0 0;
+    border-bottom: none;
+    animation: mSheetIn .34s var(--ease-native) both;
+  }
+  @keyframes mSheetIn {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+  .modal-header {
+    position: relative;
+    padding: 22px 16px 14px;
+  }
+  .modal-header::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 42px;
+    height: 5px;
+    border-radius: 99px;
+    background: var(--c-border);
+  }
+  .modal-body {
+    padding: 16px calc(14px + var(--safe-left)) 16px calc(14px + var(--safe-right));
+    overscroll-behavior: contain;
+  }
+  .modal-footer {
+    flex-direction: column-reverse;
+    gap: 8px;
+    padding: 12px 16px calc(12px + var(--safe-bottom));
+  }
+  .modal-footer > * { width: 100%; min-height: 48px; }
+
+  /* ── 6.12 Toasts clear the tab bar and the FAB ──────────────────────── */
+
+  .toast-stack {
+    left: 12px;
+    right: 12px;
+    bottom: calc(var(--mobile-nav-h) + var(--safe-bottom) + 80px);
+    align-items: stretch;
+  }
+  .toast { max-width: none; }
+}
+
+@media (max-width: 767px) {
+
+  /* ── 6.13 Data tables → stacked cards ───────────────────────────────────
+     Every listing table carries `data-label` on its cells, so each row can
+     re-flow into a label/value card with no horizontal scrolling and no
+     data hidden off-screen. Tables that must keep their tabular shape
+     (printable invoices, ledger reports) opt out via `.print-table` or
+     `.table-keep`.
+     ------------------------------------------------------------------- */
+
+  .data-table:not(.print-table):not(.table-keep) { display: block; width: 100%; }
+  .data-table:not(.print-table):not(.table-keep) thead { display: none; }
+
+  .data-table:not(.print-table):not(.table-keep) tbody {
+    display: block;
+    counter-reset: mrow;
+    padding: 12px;
+  }
+
+  .data-table:not(.print-table):not(.table-keep) tbody > tr {
+    position: relative;
+    display: block;
+    counter-increment: mrow;
+    padding: 12px 14px 8px;
+    margin-bottom: 10px;
+    background: var(--c-bg-card);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+  }
+  .data-table:not(.print-table):not(.table-keep) tbody > tr:last-child { margin-bottom: 0; }
+  .data-table:not(.print-table):not(.table-keep) tbody > tr:active {
+    border-color: color-mix(in srgb, var(--c-primary) 40%, transparent);
+  }
+
+  /* Row ordinal as a corner chip (replaces the `#` column). */
+  .data-table:not(.print-table):not(.table-keep) tbody > tr::before {
+    content: counter(mrow);
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    min-width: 22px;
+    padding: 1px 6px;
+    border-radius: 99px;
+    background: var(--c-bg-input);
+    border: 1px solid var(--c-border);
+    color: var(--c-text-subtle);
+    font-size: .65rem;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .data-table:not(.print-table):not(.table-keep) tbody td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    width: auto !important;
+    max-width: none !important;
+    min-height: 36px;
+    padding: 6px 0 !important;
+    border: none !important;
+    text-align: right !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+  .data-table:not(.print-table):not(.table-keep) tbody td[data-label]::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    max-width: 45%;
+    color: var(--c-text-muted);
+    font-size: .67rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    text-align: left;
+  }
+
+  /* The `#` cell is redundant next to the corner chip. */
+  /* .td-num is the row ordinal in the listing modules — redundant once
+     the card carries its own counter chip. Report modules reuse the
+     class for a real first column (a date); those cells carry a
+     data-label, so keep them visible. */
+  .data-table:not(.print-table):not(.table-keep) tbody td.td-num:not([data-label]) { display: none; }
+
+  /* Lead cell (the entity name) becomes the card's title line. */
+  .data-table:not(.print-table):not(.table-keep) tbody td.td-title {
+    display: block;
+    padding: 0 46px 8px 0 !important;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--c-border) !important;
+    font-size: 1rem;
+    font-weight: 700;
+    text-align: left !important;
+  }
+  .data-table:not(.print-table):not(.table-keep) tbody td.td-title::before { display: none; }
+
+  /* Action buttons drop to a full-width row at the bottom of the card. */
+  .data-table:not(.print-table):not(.table-keep) tbody td:has(.row-actions) {
+    padding-top: 10px !important;
+    margin-top: 4px;
+    border-top: 1px solid var(--c-border) !important;
+  }
+  .data-table:not(.print-table):not(.table-keep) tbody td:has(.row-actions)::before { content: 'Actions'; }
+  .data-table:not(.print-table):not(.table-keep) .row-actions { gap: 12px; }
+
+  /* Grand-total footer becomes a highlighted summary card. */
+  .data-table:not(.print-table):not(.table-keep) tfoot { display: block; padding: 0 12px 12px; }
+  .data-table:not(.print-table):not(.table-keep) tfoot > tr {
+    display: block;
+    padding: 14px;
+    border: 1px solid var(--c-primary);
+    border-radius: var(--radius-md);
+    background: var(--c-primary-light) !important;
+  }
+  .data-table:not(.print-table):not(.table-keep) tfoot td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 5px 0 !important;
+    text-align: right !important;
+    font-size: .9rem !important;
+  }
+  .data-table:not(.print-table):not(.table-keep) tfoot td[data-label]::before {
+    content: attr(data-label);
+    color: var(--c-text-muted);
+    font-size: .67rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    text-align: left;
+  }
+  .data-table:not(.print-table):not(.table-keep) tfoot td:empty { display: none; }
+
+  /* ── 6.14 Card grid / empty state ───────────────────────────────────── */
+
+  .card-grid { grid-template-columns: 1fr; gap: 12px; padding: 12px; }
+  .account-card { border-radius: var(--radius-md); }
+  .card-body { padding: 14px; }
+  .card-actions { gap: 8px; }
+
+  .empty-state { padding: 44px 20px; }
+  .empty-icon { width: 56px; height: 56px; }
+}
+
+/* ───────────────────────────────────────────────────────────────
+   §6.15  Printable documents — fit-to-screen on phones
+   Invoices/receipts are authored for A4 with generous inline
+   padding. On a phone we shrink the frame and collapse the
+   fixed-width ledger grids so nothing overflows the viewport.
+   Pinch-to-zoom stays available (viewport meta allows it) for
+   users who want to inspect the document at print scale.
+   ─────────────────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+
+  .invoice-page-wrapper,
+  .receipt-page {
+    padding: calc(12px + var(--safe-top)) 12px
+             calc(24px + var(--safe-bottom)) 12px !important;
+    max-width: 100% !important;
+    gap: 14px !important;
+  }
+
+  /* The document "sheet" itself. */
+  .invoice-page-wrapper .print-card,
+  .receipt-page .print-card {
+    padding: 16px 14px !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: var(--shadow-sm) !important;
+  }
+
+  /* Header: brand block over document meta, both left-aligned. */
+  .invoice-page-wrapper .print-header-bg,
+  .receipt-page .print-card > div:first-child {
+    flex-direction: column !important;
+    gap: 14px !important;
+    padding-bottom: 16px !important;
+    margin-bottom: 18px !important;
+  }
+  .invoice-page-wrapper .print-header-bg > div:last-child {
+    text-align: left !important;
+    min-width: 0 !important;
+  }
+  .invoice-page-wrapper .print-header-bg > div:last-child > div > div {
+    justify-content: flex-start !important;
+  }
+
+  /* Two-up detail panels collapse. */
+  .inv-2col { grid-template-columns: 1fr !important; gap: 14px !important; }
+
+  /* Summary block: payment history above the ledger, full width. */
+  .inv-summary {
+    flex-direction: column !important;
+    gap: 16px !important;
+    margin-bottom: 20px !important;
+  }
+  .inv-summary > * { flex: 1 1 auto !important; min-width: 0 !important; }
+
+  /* Fixed-px label/value ledger → fluid label / right-aligned value. */
+  .inv-ledger {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    min-width: 0 !important;
+    width: 100%;
+    column-gap: 12px !important;
+  }
+  .inv-ledger > div:nth-child(even) { white-space: nowrap; }
+
+  /* Line-item tables stay real tables (opted out via .print-table),
+     so give them a horizontal scroll rail instead of clipping. */
+  .invoice-page-wrapper .table-scroll,
+  .receipt-page .table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    margin: 0 -14px 18px;
+    padding: 0 14px;
+  }
+  .invoice-page-wrapper .print-table,
+  .receipt-page .print-table {
+    min-width: 560px;
+    font-size: 0.8rem;
+  }
+  .invoice-page-wrapper .print-table th,
+  .invoice-page-wrapper .print-table td,
+  .receipt-page .print-table th,
+  .receipt-page .print-table td { padding: 8px 10px; }
+
+  /* Toolbar above the document: full-width thumb-friendly buttons. */
+  .invoice-page-wrapper .no-print,
+  .receipt-page .no-print { width: 100%; }
+  .invoice-page-wrapper .no-print .btn,
+  .invoice-page-wrapper .no-print .btn-primary,
+  .invoice-page-wrapper .no-print .btn-secondary,
+  .receipt-page .no-print .btn,
+  .receipt-page .no-print .btn-primary,
+  .receipt-page .no-print .btn-secondary { min-height: 46px; }
+}
+
+/* ───────────────────────────────────────────────────────────────
+   §6.16  Report modules (Daily Book, Daily Cash, Chart of Accounts,
+   Profit & Loss, Account Statement) on phones.
+
+   Each of these ships its own inline <style> block that Next.js
+   injects into the document *body*, so equal-specificity rules
+   there beat this stylesheet — hence the !important flags. They
+   already stack their two-pane layout at <=1024px; what they lack
+   is phone padding, safe-area allowance, a control panel ordered
+   above the document, and scrollable dense ledger tables.
+   ─────────────────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+
+  .db-wrapper, .dc-wrapper, .coa-wrapper, .pl-container, .as-container {
+    padding: 14px 12px calc(var(--mobile-nav-h) + var(--safe-bottom) + 20px) 12px !important;
+    gap: 14px !important;
+    min-height: auto !important;
+  }
+
+  /* Controls first (date pickers / section toggles), document after. */
+  .db-wrapper, .dc-wrapper, .coa-wrapper {
+    flex-direction: column !important;
+  }
+  .db-sidebar, .dc-sidebar, .coa-sidebar {
+    order: -1;
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 auto !important;
+    position: static !important;
+    padding: 14px !important;
+  }
+
+  /* The A4 simulator page shrinks to the viewport. */
+  .db-main-page, .dc-main-page, .coa-main-page, .pl-paper {
+    padding: 16px 14px !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    border-radius: var(--radius-md) !important;
+  }
+
+  /* Report headers stack. */
+  .db-header, .dc-header, .coa-header, .print-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+    text-align: left !important;
+  }
+
+  /* Section controls / checklists become wrapping chip rows. */
+  .db-checklist, .coa-checklist, .coa-section-controls {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 8px !important;
+  }
+  .db-check-item, .coa-check-item {
+    min-height: var(--tap-min);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px;
+    border: 1px solid var(--c-border);
+    border-radius: 999px;
+    background: var(--c-bg-alt);
+  }
+  .db-check-item input, .coa-check-item input { width: 18px; height: 18px; }
+
+  /* Date pickers full width and non-zooming. */
+  .db-date-picker-wrap, .dc-date-picker-wrap, .coa-date-picker-wrap { width: 100%; }
+  .db-date-picker, .dc-date-picker, .coa-date-picker {
+    width: 100% !important;
+    font-size: 16px !important;
+    min-height: var(--tap-min) !important;
+  }
+
+  /* Print buttons reach thumb size. */
+  .db-btn-print, .dc-btn-print, .coa-btn-print {
+    width: 100%;
+    min-height: 46px !important;
+    justify-content: center;
+  }
+
+  /* Dense accounting ledgers keep their columns but gain a scroll
+     rail — collapsing a debit/credit ledger into cards destroys the
+     alignment that makes it readable. */
+  .db-section, .dc-section, .coa-section, .as-row {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+  .db-table, .dc-table, .coa-table {
+    min-width: 620px;
+    font-size: 10.5px !important;
+  }
+  .db-table th, .db-table td,
+  .dc-table th, .dc-table td,
+  .coa-table th, .coa-table td { padding: 5px 6px !important; }
+
+  /* Summary cards stack. */
+  .coa-summary-grid { grid-template-columns: 1fr !important; gap: 12px !important; }
+  .coa-growth-banner { flex-direction: column !important; gap: 10px !important; }
+  .coa-growth-divider { display: none !important; }
+}
+
+/* ───────────────────────────────────────────────────────────────
+   §6.17  Tables that must stay tabular on phones (.table-keep)
+   Journal debit/credit grids and line-item editors lose their
+   meaning when flattened into cards — column alignment *is* the
+   information. Give them a horizontal scroll rail instead.
+   ─────────────────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  .table-scroll:has(> .data-table.table-keep),
+  .table-scroll:has(> table.table-keep) {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+  .data-table.table-keep { min-width: 640px; font-size: 0.82rem; }
+  .data-table.table-keep th,
+  .data-table.table-keep td { padding: 8px 10px; }
+  .data-table.table-keep input,
+  .data-table.table-keep select,
+  .data-table.table-keep .field-input,
+  .data-table.table-keep .select-trigger {
+    font-size: 16px !important;
+    min-height: 40px;
+  }
+}
+
+/* ───────────────────────────────────────────────────────────────
+   §7  Compact phones (<=380px) — iPhone SE / older Androids.
+   ─────────────────────────────────────────────────────────────── */
+@media (max-width: 380px) {
+  .app-content { padding-left: calc(10px + var(--safe-left)); padding-right: calc(10px + var(--safe-right)); }
+  .app-header { padding-left: calc(10px + var(--safe-left)); padding-right: calc(10px + var(--safe-right)); }
+
+  .nav-tab-label { font-size: 0.6rem; }
+  .stats-bar > .stat-card { min-width: 148px; padding: 12px 14px; }
+  .stat-count { font-size: clamp(1.05rem, 6vw, 1.3rem); }
+
+  .ms-sheet-grid { grid-template-columns: 1fr; }
+  .ms-sheet-item { min-height: 62px; }
+
+  .filter-chips > * { font-size: 0.78rem; padding: 0 12px; }
+
+  .data-table:not(.print-table):not(.table-keep) tbody { padding: 8px; }
+  .data-table:not(.print-table):not(.table-keep) tbody > tr { padding: 10px 11px 6px; }
+  .data-table:not(.print-table):not(.table-keep) tbody td { font-size: 0.82rem; }
+
+  .invoice-page-wrapper .print-card,
+  .receipt-page .print-card { padding: 12px 10px !important; }
+}
+
+/* ───────────────────────────────────────────────────────────────
+   §8  Landscape phones — very little vertical room, so trim the
+   chrome and let sheets use nearly the whole height.
+   ─────────────────────────────────────────────────────────────── */
+@media (max-width: 926px) and (orientation: landscape) and (max-height: 500px) {
+  .app-header { position: static; }
+
+  .mobile-bottom-nav { height: calc(52px + var(--safe-bottom)); }
+  .nav-tab-icon { height: 20px; }
+  .nav-tab-label { display: none; }
+
+  .app-content { padding-bottom: calc(52px + var(--safe-bottom) + 12px); }
+
+  .sheet-content, .modal-content { height: 100dvh !important; border-radius: 0 !important; }
+  .ms-sheet { max-height: 92dvh; overflow-y: auto; }
+  .ms-sheet-grid { grid-template-columns: repeat(4, 1fr); }
+  .ms-sheet-item { min-height: 66px; }
+
+  /* Landscape gives enough width for a real 2-up form. */
+  .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+
+  .app-header .header-right > .btn-primary {
+    bottom: calc(52px + var(--safe-bottom) + 10px);
+    width: 48px; height: 48px; min-height: 48px;
+  }
+}
+
+/* ───────────────────────────────────────────────────────────────
+   §9  Print — mobile chrome must never reach paper.
+   ─────────────────────────────────────────────────────────────── */
+@media print {
+  .mobile-bottom-nav,
+  .ms-sheet,
+  .ms-sheet-scrim,
+  .toast-stack,
+  .app-header .header-right > .btn-primary { display: none !important; }
+
+  .app-content,
+  .invoice-page-wrapper,
+  .receipt-page {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* Undo the phone card transform so printed tables stay tabular. */
+  .data-table, .data-table thead, .data-table tbody,
+  .data-table tfoot, .data-table tr, .data-table td, .data-table th {
+    display: revert !important;
+  }
+  .data-table thead { display: table-header-group !important; }
+  .data-table tbody { display: table-row-group !important; }
+  .data-table tfoot { display: table-footer-group !important; }
+  .data-table tr { display: table-row !important; }
+  .data-table td, .data-table th { display: table-cell !important; }
+  .data-table tbody > tr::before,
+  .data-table tbody td[data-label]::before { content: none !important; }
+  .data-table tbody > tr {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .table-scroll, .db-section, .dc-section, .coa-section { overflow: visible !important; }
+  .print-table, .db-table, .dc-table, .coa-table { min-width: 0 !important; }
+}
+
+/* ───────────────────────────────────────────────────────────────
+   §10  Reduced motion / accessibility.
+   ─────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .ms-sheet, .sheet-content, .modal-content { transition: none !important; }
+}

@@ -45,13 +45,27 @@ export async function getBackupConfig(): Promise<ActionResult<BackupConfig | nul
   }
 }
 
-const MASTER_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '1047648392019-solarerp.apps.googleusercontent.com';
-const MASTER_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || 'GOCSPX-solarerp-master-secret';
+function getMasterCredentials(): { id: string; secret: string } {
+  try {
+    const configPath = path.join(process.cwd(), 'server', 'prisma', 'backup-config.json');
+    if (fs.existsSync(configPath)) {
+      const parsed = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      if (parsed.clientId && parsed.clientSecret) {
+        return { id: parsed.clientId, secret: parsed.clientSecret };
+      }
+    }
+  } catch (_) {}
+  return {
+    id: process.env.GOOGLE_CLIENT_ID || '',
+    secret: process.env.GOOGLE_CLIENT_SECRET || ''
+  };
+}
 
 export async function getGoogleAuthUrl(customClientId?: string, customClientSecret?: string): Promise<ActionResult<string>> {
   try {
-    const finalClientId = (customClientId && customClientId.trim()) ? customClientId.trim() : MASTER_CLIENT_ID;
-    const finalClientSecret = (customClientSecret && customClientSecret.trim()) ? customClientSecret.trim() : MASTER_CLIENT_SECRET;
+    const master = getMasterCredentials();
+    const finalClientId = (customClientId && customClientId.trim()) ? customClientId.trim() : master.id;
+    const finalClientSecret = (customClientSecret && customClientSecret.trim()) ? customClientSecret.trim() : master.secret;
 
     if (!finalClientId || !finalClientSecret) {
       throw new Error('Google OAuth Credentials are required.');

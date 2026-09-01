@@ -2,6 +2,9 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import Script from 'next/script';
 import './globals.css';
+// Loaded *after* globals.css so the mobile/tablet layer wins on equal
+// specificity without needing !important everywhere.
+import './mobile.css';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -27,12 +30,18 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 import LicenseGuard from '@/components/LicenseGuard';
+import MobileShell from '@/components/mobile/MobileShell';
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+        {/* Pinch-to-zoom is deliberately allowed: invoices and dense
+            ledgers must remain inspectable at print scale, and locking
+            zoom is an accessibility regression. viewport-fit=cover
+            enables the env(safe-area-inset-*) padding used throughout
+            mobile.css. */}
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="manifest" href="/manifest.json" />
@@ -75,6 +84,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body className={inter.variable} suppressHydrationWarning>
         <LicenseGuard>{children}</LicenseGuard>
+        <MobileShell />
       </body>
     </html>
   );

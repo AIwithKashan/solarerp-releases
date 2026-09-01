@@ -406,6 +406,8 @@ export default function SettingsModule({ initialSettings }: { initialSettings: B
     }
   };
 
+  const [downloadProgress, setDownloadProgress] = useState<{ percent: number; loadedMB: string; totalMB: string; status: string } | null>(null);
+
   const handleApplyUpdate = async () => {
     if (!updateInfo?.downloadUrl) {
       addToast('No update package URL found. Please check internet connection.', 'error');
@@ -415,11 +417,53 @@ export default function SettingsModule({ initialSettings }: { initialSettings: B
       return;
     }
     setUpdating(true);
-    addToast('Downloading update package in background...');
-    const res = await downloadAndRunUpdate(updateInfo.downloadUrl);
-    setUpdating(false);
-    if (!res.success) {
-      addToast(res.error || 'Failed to apply update.', 'error');
+    setDownloadProgress({ percent: 0, loadedMB: '0.0', totalMB: '...', status: 'Connecting to Cloud CDN...' });
+
+    try {
+      const response = await fetch('/api/update/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ downloadUrl: updateInfo.downloadUrl })
+      });
+
+      if (!response.ok || !response.body) {
+        throw new Error('Failed to initiate update download.');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = JSON.parse(line.slice(6));
+            if (data.error) {
+              throw new Error(data.error);
+            }
+            setDownloadProgress({
+              percent: data.percent,
+              loadedMB: data.loadedMB || '',
+              totalMB: data.totalMB || '',
+              status: data.status === 'applying' ? 'Launching update installer...' : `Downloading update (${data.loadedMB || 0} MB / ${data.totalMB || 0} MB)...`
+            });
+            if (data.done) {
+              addToast('Update downloaded! SolarERP is restarting to apply...', 'success');
+            }
+          }
+        }
+      }
+    } catch (err: any) {
+      setUpdating(false);
+      setDownloadProgress(null);
+      addToast(err.message || 'Failed to download update.', 'error');
     }
   };
 
@@ -1022,8 +1066,28 @@ export default function SettingsModule({ initialSettings }: { initialSettings: B
                                 style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: '8px', background: '#10b981', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem' }}
                               >
                                 {updating ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-                                Download & Apply Update (1-Click)
+                                {updating ? 'Downloading Update...' : 'Download & Apply Update (1-Click)'}
                               </button>
+
+                              {downloadProgress && (
+                                <div style={{ marginTop: '12px', padding: '12px 14px', background: 'var(--c-bg-input)', borderRadius: '8px', border: '1px solid var(--c-border)' }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '0.82rem' }}>
+                                    <span style={{ fontWeight: 600, color: 'var(--c-text)' }}>{downloadProgress.status}</span>
+                                    <span style={{ fontWeight: 800, color: '#10b981', fontSize: '0.9rem' }}>{downloadProgress.percent}%</span>
+                                  </div>
+                                  <div style={{ width: '100%', height: '8px', background: 'var(--c-border)', borderRadius: '999px', overflow: 'hidden' }}>
+                                    <div
+                                      style={{
+                                        width: `${downloadProgress.percent}%`,
+                                        height: '100%',
+                                        background: 'linear-gradient(90deg, #10b981, #059669)',
+                                        borderRadius: '999px',
+                                        transition: 'width 0.2s ease-in-out'
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
                         ) : (

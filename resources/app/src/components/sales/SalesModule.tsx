@@ -398,8 +398,8 @@ function AreaCombobox({ value, onChange, options, placeholder, hasError }: {
 function ProductStockCombobox({ value, powerWatt, onChange, stockItems, placeholder, hasError }: {
   value: string;
   powerWatt: number | null;
-  onChange: (item_name: string, powerWatt: number | null) => void;
-  stockItems: Array<{ item_name: string; power_watt: number | null; available: number }>;
+  onChange: (item_name: string, powerWatt: number | null, bilti_no?: string | null) => void;
+  stockItems: Array<{ item_name: string; power_watt: number | null; bilti_no?: string | null; available: number }>;
   placeholder: string;
   hasError?: boolean;
 }) {
@@ -440,11 +440,12 @@ function ProductStockCombobox({ value, powerWatt, onChange, stockItems, placehol
     ? stockItems
     : stockItems.filter(s => 
         s.item_name.toLowerCase().includes(query.toLowerCase()) ||
-        (s.power_watt && `${s.power_watt}W`.includes(query))
+        (s.power_watt && `${s.power_watt}W`.includes(query)) ||
+        (s.bilti_no && s.bilti_no.toLowerCase().includes(query.toLowerCase()))
       );
 
   const select = (s: typeof stockItems[0]) => {
-    onChange(s.item_name, s.power_watt);
+    onChange(s.item_name, s.power_watt, s.bilti_no);
     setQuery(getDisplayVal(s.item_name, s.power_watt));
     setOpen(false);
     setCursor(-1);
@@ -1008,7 +1009,7 @@ function SaleForm({
                     <ProductStockCombobox
                       value={it.item_name}
                       powerWatt={it.power_watt}
-                      onChange={(val, watt) => {
+                      onChange={(val, watt, bilti) => {
                         const unit = watt ? 'Watt' : 'Number';
                         setItems(prev => prev.map((item, i) => {
                           if (i !== idx) return item;
@@ -1017,6 +1018,7 @@ function SaleForm({
                             item_name: val,
                             power_watt: watt,
                             accounting_unit: unit,
+                            bilti_no: bilti || item.bilti_no || null,
                             quantity: 1,
                           };
                           // Recalculate subtotal
@@ -1065,6 +1067,17 @@ function SaleForm({
                         style={{ paddingLeft: it.power_watt ? '32px' : '12px', opacity: 0.8 }}
                       />
                     </div>
+                  </div>
+
+                  {/* Bilti No / Container # */}
+                  <div className="field-group">
+                    <label className="field-label">Bilti / Batch</label>
+                    <input
+                      className="field-input"
+                      placeholder="e.g. BL-9042"
+                      value={it.bilti_no || ''}
+                      onChange={e => handleSaveItemField(idx, 'bilti_no', e.target.value)}
+                    />
                   </div>
 
                   {/* Quantity (Capped at available stock) */}
@@ -1116,7 +1129,7 @@ function SaleForm({
                   </div>
 
                   {/* Remarks */}
-                  <div className="md:col-span-3 field-group">
+                  <div className="md:col-span-2 field-group">
                     <label className="field-label">Remarks</label>
                     <input
                       className="field-input"
@@ -1139,7 +1152,7 @@ function SaleForm({
         )}
 
         <button type="button" className="btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem', minHeight: 'auto' }}
-          onClick={() => setItems(p => [...p, { item_name: '', accounting_unit: 'Number', power_watt: null, quantity: 1, rate: 0, amount: 0, remarks: null }])}>
+          onClick={() => setItems(p => [...p, { item_name: '', accounting_unit: 'Number', power_watt: null, bilti_no: null, quantity: 1, rate: 0, amount: 0, remarks: null }])}>
           <Plus size={14} /> Add Line Item
         </button>
 
@@ -1419,8 +1432,14 @@ function SaleForm({
           <div className="space-y-3">
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
               <span style={{ color: 'var(--c-text-muted)' }}>Items Subtotal:</span>
-              <span>PKR {formatPKR(subtotal)}</span>
+              <span>PKR {formatPKR(itemsSubtotal)}</span>
             </div>
+            {creditsSubtotal > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
+                <span style={{ color: 'var(--c-text-muted)' }}>Custom Charges / Credits:</span>
+                <span>PKR {formatPKR(creditsSubtotal)}</span>
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
               <span style={{ color: 'var(--c-text-muted)' }}>Discount ({discount_percent}%):</span>
               <span style={{ color: '#ef4444' }}>- PKR {formatPKR(discount_amount)}</span>
@@ -1636,15 +1655,15 @@ function SaleTable({
               {filtered.map((s, i) => (
                 <tr key={s.id} className="data-row">
                   <td className="td-num">{i + 1}</td>
-                  <td style={{ whiteSpace: 'nowrap', fontWeight: 500 }}>{formatDatePK(s.sale_date)}</td>
-                  <td style={{ fontWeight: 700, color: 'var(--c-text-muted)', whiteSpace: 'nowrap' }}>{s.invoice_no}</td>
-                  <td className="td-title" style={{ fontWeight: 600, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.customer_name ?? ''}>
+                  <td data-label="Date" style={{ whiteSpace: 'nowrap', fontWeight: 500 }}>{formatDatePK(s.sale_date)}</td>
+                  <td data-label="Invoice #" style={{ fontWeight: 700, color: 'var(--c-text-muted)', whiteSpace: 'nowrap' }}>{s.invoice_no}</td>
+                  <td className="td-title" data-label="Customer" style={{ fontWeight: 600, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.customer_name ?? ''}>
                     {s.customer_name ?? '—'}
                   </td>
-                  <td>{s.discount_percent}%</td>
-                  <td style={{ fontWeight: 700 }}>{formatPKR(s.net_total)}</td>
-                  <td style={{ fontWeight: 600, color: 'var(--c-primary)' }}>{formatPKR(s.total_received)}</td>
-                  <td>
+                  <td data-label="Discount (%)">{s.discount_percent}%</td>
+                  <td data-label="Net Total" style={{ fontWeight: 700 }}>{formatPKR(s.net_total)}</td>
+                  <td data-label="Received" style={{ fontWeight: 600, color: 'var(--c-primary)' }}>{formatPKR(s.total_received)}</td>
+                  <td data-label="Remaining Balance">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ fontWeight: 700, color: s.remaining_balance === 0 ? 'var(--c-primary)' : '#ef4444' }}>
                         {formatPKR(s.remaining_balance)}
@@ -1674,9 +1693,9 @@ function SaleTable({
                 <td colSpan={5} style={{ textAlign: 'right', padding: '16px 20px', fontSize: '0.95rem', color: 'var(--c-text-muted)' }}>
                   Grand Totals:
                 </td>
-                <td style={{ padding: '16px 20px', fontSize: '1rem', color: 'var(--c-text)' }}>PKR {formatPKR(grandNetSum)}</td>
-                <td style={{ padding: '16px 20px', fontSize: '1rem', color: 'var(--c-primary)' }}>PKR {formatPKR(grandReceivedSum)}</td>
-                <td style={{ padding: '16px 20px', fontSize: '1rem', color: '#ef4444' }}>PKR {formatPKR(grandOutstandingSum)}</td>
+                <td data-label="Net Total" style={{ padding: '16px 20px', fontSize: '1rem', color: 'var(--c-text)' }}>PKR {formatPKR(grandNetSum)}</td>
+                <td data-label="Received" style={{ padding: '16px 20px', fontSize: '1rem', color: 'var(--c-primary)' }}>PKR {formatPKR(grandReceivedSum)}</td>
+                <td data-label="Outstanding" style={{ padding: '16px 20px', fontSize: '1rem', color: '#ef4444' }}>PKR {formatPKR(grandOutstandingSum)}</td>
                 <td colSpan={1}></td>
               </tr>
             </tfoot>

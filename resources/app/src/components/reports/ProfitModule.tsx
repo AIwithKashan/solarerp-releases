@@ -241,16 +241,16 @@ export default function ProfitModule({
                   ) : (
                     data.sales_breakdown.map((s, idx) => (
                       <tr key={idx} className="data-row">
-                        <td className="td-num" style={{ whiteSpace: 'nowrap' }}>{s.sale_date}</td>
-                        <td style={{ fontWeight: 600 }}>{s.invoice_no}</td>
-                        <td className="td-title">{s.customer_name || 'Walk-in Customer'}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 500, color: 'var(--c-text)' }}>
+                        <td className="td-num" data-label="Sale Date" style={{ whiteSpace: 'nowrap' }}>{s.sale_date}</td>
+                        <td data-label="Invoice No" style={{ fontWeight: 600 }}>{s.invoice_no}</td>
+                        <td className="td-title" data-label="Customer">{s.customer_name || 'Walk-in Customer'}</td>
+                        <td data-label="Net Sales (Rs)" style={{ textAlign: 'right', fontWeight: 500, color: 'var(--c-text)' }}>
                           {formatCurrency(s.net_total)}
                         </td>
-                        <td style={{ textAlign: 'right', fontWeight: 500, color: 'var(--c-danger)' }}>
+                        <td data-label="COGS (Rs)" style={{ textAlign: 'right', fontWeight: 500, color: 'var(--c-danger)' }}>
                           {formatCurrency(s.cogs)}
                         </td>
-                        <td style={{ textAlign: 'right', fontWeight: 600, color: s.gross_profit >= 0 ? '#b45309' : 'var(--c-danger)' }}>
+                        <td data-label="Gross Profit (Rs)" style={{ textAlign: 'right', fontWeight: 600, color: s.gross_profit >= 0 ? '#b45309' : 'var(--c-danger)' }}>
                           {formatCurrency(s.gross_profit)}
                         </td>
                       </tr>
@@ -260,13 +260,13 @@ export default function ProfitModule({
                   {/* Period Totals Row */}
                   <tr className="data-row" style={{ background: 'color-mix(in srgb, #f59e0b 10%, transparent)', fontWeight: 700, borderTop: '2px solid var(--c-border)' }}>
                     <td colSpan={3} style={{ textAlign: 'right', color: '#b45309' }}>TOTALS</td>
-                    <td style={{ textAlign: 'right', color: 'var(--c-text)' }}>
+                    <td data-label="Net Sales" style={{ textAlign: 'right', color: 'var(--c-text)' }}>
                       {formatCurrency(data.net_sales)}
                     </td>
-                    <td style={{ textAlign: 'right', color: 'var(--c-danger)' }}>
+                    <td data-label="COGS" style={{ textAlign: 'right', color: 'var(--c-danger)' }}>
                       {formatCurrency(data.cogs)}
                     </td>
-                    <td style={{ textAlign: 'right', color: '#b45309' }}>
+                    <td data-label="Gross Profit" style={{ textAlign: 'right', color: '#b45309' }}>
                       {formatCurrency(data.gross_profit)}
                     </td>
                   </tr>

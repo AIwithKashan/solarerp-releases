@@ -185,23 +185,23 @@ export default function PurchaseModule({
                 <>
                   {data.map((p, idx) => (
                     <tr key={idx} className="data-row">
-                      <td className="td-num" style={{ whiteSpace: 'nowrap' }}>{p.purchase_date}</td>
-                      <td style={{ fontWeight: 500 }}>{p.invoice_no}</td>
-                      <td className="td-title">{p.supplier_name}</td>
-                      <td>
+                      <td className="td-num" data-label="Date" style={{ whiteSpace: 'nowrap' }}>{p.purchase_date}</td>
+                      <td data-label="Invoice No" style={{ fontWeight: 500 }}>{p.invoice_no}</td>
+                      <td className="td-title" data-label="Supplier">{p.supplier_name}</td>
+                      <td data-label="Item">
                         {p.item_name}
                         {p.power_watt > 0 && <span style={{ color: 'var(--c-text-muted)', marginLeft: '8px', fontSize: '0.85rem' }}>({p.power_watt}W)</span>}
                       </td>
-                      <td style={{ textAlign: 'center' }}>
+                      <td data-label="Qty" style={{ textAlign: 'center' }}>
                         {p.quantity} <span style={{ color: 'var(--c-text-muted)', fontSize: '0.85em' }}>{p.accounting_unit}</span>
                       </td>
-                      <td style={{ textAlign: 'right', color: 'var(--c-text-muted)' }}>{formatCurrency(p.rate)}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--c-text)' }}>{formatCurrency(p.amount)}</td>
+                      <td data-label="Rate (Rs)" style={{ textAlign: 'right', color: 'var(--c-text-muted)' }}>{formatCurrency(p.rate)}</td>
+                      <td data-label="Amount (Rs)" style={{ textAlign: 'right', fontWeight: 600, color: 'var(--c-text)' }}>{formatCurrency(p.amount)}</td>
                     </tr>
                   ))}
                   <tr className="data-row" style={{ background: 'color-mix(in srgb, #f59e0b 10%, transparent)', fontWeight: 700, borderTop: '2px solid var(--c-border)' }}>
                     <td colSpan={6} style={{ textAlign: 'right', color: '#b45309' }}>TOTAL PURCHASES</td>
-                    <td style={{ textAlign: 'right', color: '#b45309' }}>{formatCurrency(totalAmount)}</td>
+                    <td data-label="Total" style={{ textAlign: 'right', color: '#b45309' }}>{formatCurrency(totalAmount)}</td>
                   </tr>
                 </>
               )}

@@ -247,8 +247,8 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         </div>
 
         {/* Totals Section */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--c-border)', paddingTop: '20px', marginBottom: '40px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '120px 180px', gap: '8px', fontSize: '0.95rem' }}>
+        <div className="inv-summary" style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--c-border)', paddingTop: '20px', marginBottom: '40px' }}>
+          <div className="inv-ledger" style={{ display: 'grid', gridTemplateColumns: '120px 180px', gap: '8px', fontSize: '0.95rem' }}>
             <div style={{ color: 'var(--c-text-muted)', fontWeight: 600 }}>Subtotal:</div>
             <div style={{ textAlign: 'right', color: 'var(--c-text)' }}>{formatPKR(purchase.amount)}</div>
             

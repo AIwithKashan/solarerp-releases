@@ -393,9 +393,10 @@ function PartyCombobox({
   );
 }
 
-// ─── Voucher Form ─────────────────────────────────────────────────────────────
+// ─── Unified Voucher Form (Single Window for Receipts & Payments) ──────────────
 
-interface FormState {
+interface UnifiedFormState {
+  direction:          'receipt' | 'payment';
   voucher_date:       string;
   main_account_id:    string;
   main_account_name:  string;
@@ -406,7 +407,8 @@ interface FormState {
   remarks:            string;
 }
 
-const EMPTY_FORM = (): FormState => ({
+const EMPTY_UNIFIED_FORM = (): UnifiedFormState => ({
+  direction:          'receipt',
   voucher_date:       todayISO(),
   main_account_id:    '',
   main_account_name:  '',
@@ -417,35 +419,32 @@ const EMPTY_FORM = (): FormState => ({
   remarks:            '',
 });
 
-function VoucherForm({
-  activeType,
-  mainAccounts,
+function UnifiedVoucherForm({
+  cashAccounts,
+  bankAccounts,
   partyAccounts,
   onSave,
   isPending,
 }: {
-  activeType: VoucherType;
-  mainAccounts: Account[];
+  cashAccounts: Account[];
+  bankAccounts: Account[];
   partyAccounts: Account[];
   onSave: (payload: Omit<VoucherInsert, 'direction' | 'voucher_no'>) => void;
   isPending: boolean;
 }) {
-  const [form, setForm]     = useState<FormState>(EMPTY_FORM());
-  const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
+  const [form, setForm]     = useState<UnifiedFormState>(EMPTY_UNIFIED_FORM());
+  const [errors, setErrors] = useState<Partial<Record<keyof UnifiedFormState, string>>>({});
 
-  // Reset when tab changes
-  useEffect(() => { setForm(EMPTY_FORM()); setErrors({}); }, [activeType]);
+  const cashBankAccounts = [...cashAccounts, ...bankAccounts];
+  const isReceipt = form.direction === 'receipt';
+  const accentColor = isReceipt ? '#10b981' : '#ef4444';
 
-  const set = (k: keyof FormState) => (v: string) => setForm(f => ({ ...f, [k]: v }));
-
-  const isReceipt = activeType === 'Cash Receipt' || activeType === 'Bank Receipt';
-  const isCash    = activeType === 'Cash Receipt' || activeType === 'Cash Payment';
-  const tabMeta   = VOUCHER_TABS.find(t => t.type === activeType)!;
+  const set = (k: keyof UnifiedFormState) => (v: any) => setForm(f => ({ ...f, [k]: v }));
 
   const validate = (): boolean => {
-    const errs: Partial<Record<keyof FormState, string>> = {};
-    if (!form.main_account_id)          errs.main_account_id = 'Please select a ledger account.';
-    if (!form.party_account_name.trim()) errs.party_account_name = 'Party name is required.';
+    const errs: Partial<Record<keyof UnifiedFormState, string>> = {};
+    if (!form.main_account_id)           errs.main_account_id = 'Please select a Cash or Bank account.';
+    if (!form.party_account_name.trim()) errs.party_account_name = isReceipt ? 'Received From name is required.' : 'Paid To name is required.';
     const amt = parseFloat(form.amount);
     if (!form.amount || isNaN(amt) || amt <= 0) errs.amount = 'Enter a valid amount (> 0).';
     setErrors(errs);
@@ -455,8 +454,15 @@ function VoucherForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
+
+    const channelAcc = cashBankAccounts.find(a => a.id === form.main_account_id);
+    const isCash = channelAcc?.account_type === 'Cash Account';
+    const voucher_type: VoucherType = isReceipt
+      ? (isCash ? 'Cash Receipt' : 'Bank Receipt')
+      : (isCash ? 'Cash Payment' : 'Bank Payment');
+
     onSave({
-      voucher_type:       activeType,
+      voucher_type,
       voucher_date:       form.voucher_date,
       main_account_id:    form.main_account_id,
       main_account_name:  form.main_account_name,
@@ -468,37 +474,70 @@ function VoucherForm({
     });
   };
 
-  const handleReset = () => { setForm(EMPTY_FORM()); setErrors({}); };
-
-  const accentColor = tabMeta.color;
+  const handleReset = () => { setForm(EMPTY_UNIFIED_FORM()); setErrors({}); };
 
   return (
     <form onSubmit={handleSubmit} noValidate>
-      {/* Form card */}
-      <div className="account-form" style={{ borderTop: `3px solid ${accentColor}` }}>
+      <div className="account-form" style={{ borderTop: `3.5px solid ${accentColor}`, transition: 'border-color 0.2s' }}>
 
-        {/* Form header */}
-        <div className="form-header">
+        {/* Transaction Direction Segmented Selector */}
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => set('direction')('receipt')}
+            style={{
+              flex: 1, minWidth: '180px', padding: '12px 18px', borderRadius: '10px',
+              border: `2px solid ${isReceipt ? '#10b981' : 'var(--c-border)'}`,
+              background: isReceipt ? 'rgba(16, 185, 129, 0.12)' : 'var(--c-bg-card)',
+              color: isReceipt ? '#10b981' : 'var(--c-text-muted)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+              fontSize: '0.95rem', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s'
+            }}
+          >
+            <ArrowDownToLine size={18} />
+            <span>Money IN (Received From)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => set('direction')('payment')}
+            style={{
+              flex: 1, minWidth: '180px', padding: '12px 18px', borderRadius: '10px',
+              border: `2px solid ${!isReceipt ? '#ef4444' : 'var(--c-border)'}`,
+              background: !isReceipt ? 'rgba(239, 68, 68, 0.12)' : 'var(--c-bg-card)',
+              color: !isReceipt ? '#ef4444' : 'var(--c-text-muted)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+              fontSize: '0.95rem', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s'
+            }}
+          >
+            <ArrowUpFromLine size={18} />
+            <span>Money OUT (Paid To)</span>
+          </button>
+        </div>
+
+        {/* Form header description */}
+        <div className="form-header" style={{ marginBottom: 20 }}>
           <div className="form-header-icon" style={{ background: `${accentColor}18`, color: accentColor }}>
-            <tabMeta.icon size={20} />
+            {isReceipt ? <ArrowDownToLine size={20} /> : <ArrowUpFromLine size={20} />}
           </div>
           <div>
-            <p className="form-title">{activeType}</p>
+            <p className="form-title" style={{ color: accentColor }}>
+              {isReceipt ? 'Record Receipt (Money Received)' : 'Record Payment (Money Paid)'}
+            </p>
             <p className="form-subtitle">
               {isReceipt
-                ? `Record money received into your ${isCash ? 'cash' : 'bank'} account`
-                : `Record money paid out from your ${isCash ? 'cash' : 'bank'} account`}
+                ? 'Record payment received from a customer, refund, or other income into Cash or Bank.'
+                : 'Record payment made to a supplier, expense, staff salary, or vendor from Cash or Bank.'}
             </p>
           </div>
         </div>
 
         {/* No accounts warning */}
-        {mainAccounts.length === 0 && (
+        {cashBankAccounts.length === 0 && (
           <div className="error-banner" style={{ marginBottom: 20, background: 'rgba(251,191,36,.12)', borderColor: 'rgba(251,191,36,.4)', color: '#b45309' }}>
             <AlertCircle size={14} />
             <span>
-              No {isCash ? 'Cash' : 'Bank'} accounts found. Please add a{' '}
-              <strong>{isCash ? '"Cash Account"' : '"Bank Account"'}</strong> in{' '}
+              No Cash or Bank accounts found. Please create one in{' '}
               <Link href="/accounts" style={{ textDecoration: 'underline' }}>Account Management</Link> first.
             </span>
           </div>
@@ -515,8 +554,7 @@ function VoucherForm({
               <div className="error-banner" style={{ marginBottom: 20, background: 'rgba(245, 158, 11, 0.12)', borderColor: 'rgba(245, 158, 11, 0.4)', color: '#b45309' }}>
                 <span style={{ fontSize: '1.2rem', marginRight: '8px' }}>⚠️</span>
                 <span>
-                  <strong>Careful:</strong> You are recording a Receipt (money coming IN) from a <strong>Supplier</strong>. 
-                  If you are trying to pay this supplier to clear an invoice, please switch to the <strong>Cash/Bank Payment</strong> tab instead.
+                  <strong>Note:</strong> You are receiving money from a <strong>Supplier</strong> (e.g. refund/rebate). If paying a supplier invoice, select <strong>Money OUT (Paid To)</strong>.
                 </span>
               </div>
             );
@@ -526,31 +564,26 @@ function VoucherForm({
               <div className="error-banner" style={{ marginBottom: 20, background: 'rgba(245, 158, 11, 0.12)', borderColor: 'rgba(245, 158, 11, 0.4)', color: '#b45309' }}>
                 <span style={{ fontSize: '1.2rem', marginRight: '8px' }}>⚠️</span>
                 <span>
-                  <strong>Careful:</strong> You are recording a Payment (money going OUT) to a <strong>Customer</strong>. 
-                  If you are trying to record a customer's payment to you, please switch to the <strong>Cash/Bank Receipt</strong> tab instead.
+                  <strong>Note:</strong> You are paying money to a <strong>Customer</strong> (e.g. refund). If collecting sales cash, select <strong>Money IN (Received From)</strong>.
                 </span>
               </div>
             );
           }
 
-          // Overpayment Warning
           const enteredAmount = parseFloat(form.amount) || 0;
           if (
             enteredAmount > 0 && 
             selectedParty.total_due !== undefined && 
             enteredAmount > selectedParty.total_due &&
-            // Only warn if they actually owe something or if total_due is 0 (meaning nothing is owed)
             (selectedParty.account_type === 'Suppliers' || selectedParty.account_type === 'Customers')
           ) {
-            // If paying a supplier or receiving from customer and amount > total_due
             if ((!isReceipt && selectedParty.account_type === 'Suppliers') || (isReceipt && selectedParty.account_type === 'Customers')) {
               const overpayment = enteredAmount - selectedParty.total_due;
               return (
                 <div className="error-banner" style={{ marginBottom: 20, background: 'rgba(59, 130, 246, 0.12)', borderColor: 'rgba(59, 130, 246, 0.4)', color: '#1d4ed8' }}>
                   <Info size={16} style={{ marginRight: '8px', flexShrink: 0 }} />
                   <span>
-                    <strong>Overpayment Notice:</strong> You are {isReceipt ? 'receiving' : 'paying'} <strong>PKR {formatPKR(enteredAmount)}</strong>, but the pending due is only <strong>PKR {formatPKR(selectedParty.total_due)}</strong>. 
-                    This will result in an advance / overpayment of <strong>PKR {formatPKR(overpayment)}</strong> being added to their ledger balance.
+                    <strong>Overpayment Notice:</strong> Pending due is <strong>PKR {formatPKR(selectedParty.total_due)}</strong>. Extra <strong>PKR {formatPKR(overpayment)}</strong> will be logged as advance credit.
                   </span>
                 </div>
               );
@@ -560,7 +593,7 @@ function VoucherForm({
           return null;
         })()}
 
-        {/* Row 1: Voucher No (auto) + Date */}
+        {/* Row 1: Voucher Date & Auto Voucher No */}
         <div className="form-grid">
           <div className="field-group">
             <label className="field-label">Voucher Number</label>
@@ -591,26 +624,26 @@ function VoucherForm({
           </div>
         </div>
 
-        {/* Row 2: Main Account + Party */}
+        {/* Row 2: Payment Channel (Cash/Bank) + Party Account */}
         <div className="form-grid" style={{ position: 'relative', zIndex: 10 }}>
           <div className="field-group" style={{ position: 'relative', zIndex: 20 }}>
             <label className="field-label">
-              {isCash ? 'Cash Account' : 'Bank Account'} <span className="required">*</span>
+              Through Account (Cash / Bank) <span className="required">*</span>
             </label>
             <AccountCombobox
-              accounts={mainAccounts}
+              accounts={cashBankAccounts}
               valueId={form.main_account_id}
               onChange={(id, name) => setForm(f => ({ ...f, main_account_id: id, main_account_name: name }))}
-              placeholder={`Select ${isCash ? 'Cash' : 'Bank'} account…`}
+              placeholder="Select Cash or Bank account…"
               hasError={!!errors.main_account_id}
-              icon={isCash ? Banknote : Landmark}
+              icon={Landmark}
             />
             {errors.main_account_id && <p className="field-error"><AlertCircle size={12} />{errors.main_account_id}</p>}
           </div>
 
           <div className="field-group" style={{ position: 'relative', zIndex: 10 }}>
             <label className="field-label">
-              {isReceipt ? 'Received From' : 'Paid To'} <span className="required">*</span>
+              {isReceipt ? 'Received From (Party / Customer / Income)' : 'Paid To (Party / Supplier / Expense)'} <span className="required">*</span>
             </label>
             <PartyCombobox
               accounts={partyAccounts}
@@ -621,29 +654,15 @@ function VoucherForm({
                 party_account_id:   id || '',
                 party_account_name: name,
               }))}
-              placeholder="Search account or type any name…"
+              placeholder="Search party or type any custom name…"
               hasError={!!errors.party_account_name}
             />
             {errors.party_account_name && <p className="field-error"><AlertCircle size={12} />{errors.party_account_name}</p>}
           </div>
         </div>
 
-        {/* Row 3: Details + Amount */}
+        {/* Row 3: Amount + Narration */}
         <div className="form-grid">
-          <div className="field-group">
-            <label className="field-label">Details / Narration</label>
-            <div className="input-wrapper">
-              <FileText size={16} className="input-icon" />
-              <input
-                className="field-input"
-                placeholder="e.g. Payment against Invoice #SA-0012"
-                value={form.details}
-                onChange={e => set('details')(e.target.value)}
-                disabled={isPending}
-              />
-            </div>
-          </div>
-
           <div className="field-group">
             <label className="field-label">Amount (PKR) <span className="required">*</span></label>
             <div className="input-wrapper">
@@ -661,20 +680,34 @@ function VoucherForm({
             </div>
             {errors.amount && <p className="field-error"><AlertCircle size={12} />{errors.amount}</p>}
           </div>
+
+          <div className="field-group">
+            <label className="field-label">Details / Cheque / Narration</label>
+            <div className="input-wrapper">
+              <FileText size={16} className="input-icon" />
+              <input
+                className="field-input"
+                placeholder="e.g. Cheque #89421 / Invoice #SA-0192"
+                value={form.details}
+                onChange={e => set('details')(e.target.value)}
+                disabled={isPending}
+              />
+            </div>
+          </div>
         </div>
 
-        {/* Row 4: Remarks (full width) */}
+        {/* Row 4: Remarks */}
         <div className="field-group" style={{ marginBottom: 24 }}>
           <label className="field-label">Remarks</label>
           <div className="input-wrapper" style={{ alignItems: 'flex-start' }}>
             <FileText size={16} className="input-icon" style={{ top: 12 }} />
             <textarea
               className="field-input field-textarea"
-              placeholder="Optional description or notes for this voucher…"
+              placeholder="Optional remarks or notes for this voucher…"
               value={form.remarks}
               onChange={e => set('remarks')(e.target.value)}
               disabled={isPending}
-              rows={3}
+              rows={2}
               style={{ paddingTop: 10 }}
             />
           </div>
@@ -688,11 +721,11 @@ function VoucherForm({
           <button
             type="submit"
             className="btn-primary"
-            disabled={isPending || mainAccounts.length === 0}
-            style={mainAccounts.length > 0 ? { background: `linear-gradient(135deg, ${accentColor}, ${accentColor}cc)` } : undefined}
+            disabled={isPending || cashBankAccounts.length === 0}
+            style={{ background: isReceipt ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #ef4444, #dc2626)' }}
           >
             {isPending ? <Loader2 size={16} className="spin" /> : <Check size={16} />}
-            {isPending ? 'Saving…' : `Save ${activeType}`}
+            {isPending ? 'Saving…' : `Save ${isReceipt ? 'Receipt' : 'Payment'} Voucher`}
           </button>
         </div>
       </div>
@@ -700,30 +733,32 @@ function VoucherForm({
   );
 }
 
-// ─── Voucher List ─────────────────────────────────────────────────────────────
+// ─── Unified Voucher List ──────────────────────────────────────────────────────
 
-function VoucherList({
+function UnifiedVoucherList({
   vouchers,
-  activeType,
   onDelete,
   isPending,
 }: {
   vouchers: Voucher[];
-  activeType: VoucherType;
   onDelete: (id: string) => void;
   isPending: boolean;
 }) {
   const [search, setSearch] = useState('');
-
-  const tab       = VOUCHER_TABS.find(t => t.type === activeType)!;
-  const isReceipt = tab.dir === 'receipt';
-  const accentColor = tab.color;
+  const [filterType, setFilterType] = useState<'all' | 'receipt' | 'payment' | 'cash' | 'bank'>('all');
 
   const filtered = vouchers.filter(v => {
+    // Type/Category Filter
+    if (filterType === 'receipt' && v.direction !== 'receipt') return false;
+    if (filterType === 'payment' && v.direction !== 'payment') return false;
+    if (filterType === 'cash' && !v.voucher_type.startsWith('Cash')) return false;
+    if (filterType === 'bank' && !v.voucher_type.startsWith('Bank')) return false;
+
     const q = search.toLowerCase();
     if (!q) return true;
     return (
       v.voucher_no.toLowerCase().includes(q) ||
+      v.voucher_type.toLowerCase().includes(q) ||
       v.main_account_name.toLowerCase().includes(q) ||
       (v.party_account_name ?? '').toLowerCase().includes(q) ||
       (v.details ?? '').toLowerCase().includes(q) ||
@@ -733,14 +768,14 @@ function VoucherList({
 
   return (
     <div className="account-table-wrap">
-      {/* Toolbar */}
-      <div className="table-toolbar">
-        <div className="toolbar-left">
+      {/* Toolbar with Search and Filters */}
+      <div className="table-toolbar" style={{ flexWrap: 'wrap', gap: '12px' }}>
+        <div className="toolbar-left" style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           <div className="input-wrapper search-wrapper">
             <Search size={15} className="input-icon" />
             <input
               className="field-input search-input"
-              placeholder="Search vouchers…"
+              placeholder="Search vouchers (no, party, details)…"
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
@@ -750,7 +785,67 @@ function VoucherList({
               </button>
             )}
           </div>
+
+          {/* Quick Filter Buttons */}
+          <div style={{ display: 'flex', gap: '4px', background: 'var(--c-bg)', padding: '3px', borderRadius: '8px', border: '1px solid var(--c-border)' }}>
+            <button
+              type="button"
+              onClick={() => setFilterType('all')}
+              style={{
+                padding: '4px 10px', fontSize: '0.75rem', fontWeight: 600, borderRadius: '6px', border: 'none', cursor: 'pointer',
+                background: filterType === 'all' ? 'var(--c-primary)' : 'transparent',
+                color: filterType === 'all' ? '#fff' : 'var(--c-text-muted)'
+              }}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterType('receipt')}
+              style={{
+                padding: '4px 10px', fontSize: '0.75rem', fontWeight: 600, borderRadius: '6px', border: 'none', cursor: 'pointer',
+                background: filterType === 'receipt' ? '#10b981' : 'transparent',
+                color: filterType === 'receipt' ? '#fff' : 'var(--c-text-muted)'
+              }}
+            >
+              🟢 Money IN
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterType('payment')}
+              style={{
+                padding: '4px 10px', fontSize: '0.75rem', fontWeight: 600, borderRadius: '6px', border: 'none', cursor: 'pointer',
+                background: filterType === 'payment' ? '#ef4444' : 'transparent',
+                color: filterType === 'payment' ? '#fff' : 'var(--c-text-muted)'
+              }}
+            >
+              🔴 Money OUT
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterType('cash')}
+              style={{
+                padding: '4px 10px', fontSize: '0.75rem', fontWeight: 600, borderRadius: '6px', border: 'none', cursor: 'pointer',
+                background: filterType === 'cash' ? 'var(--c-text)' : 'transparent',
+                color: filterType === 'cash' ? 'var(--c-bg)' : 'var(--c-text-muted)'
+              }}
+            >
+              Cash
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterType('bank')}
+              style={{
+                padding: '4px 10px', fontSize: '0.75rem', fontWeight: 600, borderRadius: '6px', border: 'none', cursor: 'pointer',
+                background: filterType === 'bank' ? 'var(--c-text)' : 'transparent',
+                color: filterType === 'bank' ? 'var(--c-bg)' : 'var(--c-text-muted)'
+              }}
+            >
+              Bank
+            </button>
+          </div>
         </div>
+
         <div className="toolbar-right">
           <span className="account-count">
             {filtered.length} {filtered.length === 1 ? 'voucher' : 'vouchers'}
@@ -762,7 +857,7 @@ function VoucherList({
       {filtered.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon"><Receipt size={32} /></div>
-          <p className="empty-title">No {activeType} vouchers yet</p>
+          <p className="empty-title">No vouchers found</p>
           <p className="empty-sub">
             {search ? 'No results match your search.' : 'Use the form above to log your first voucher.'}
           </p>
@@ -774,91 +869,105 @@ function VoucherList({
               <tr>
                 <th className="th-sortable" style={{ cursor: 'default' }}><span>Voucher No</span></th>
                 <th className="th-sortable" style={{ cursor: 'default' }}><span>Date</span></th>
-                <th className="th-sortable" style={{ cursor: 'default' }}><span>Ledger Account</span></th>
-                <th className="th-sortable" style={{ cursor: 'default' }}>
-                  <span>{isReceipt ? 'Received From' : 'Paid To'}</span>
-                </th>
-                <th className="th-sortable th-actions" style={{ cursor: 'default', textAlign: 'right' }}>
-                  <span>Amount</span>
-                </th>
+                <th className="th-sortable" style={{ cursor: 'default' }}><span>Type</span></th>
+                <th className="th-sortable" style={{ cursor: 'default' }}><span>Through Account</span></th>
+                <th className="th-sortable" style={{ cursor: 'default' }}><span>Received From / Paid To</span></th>
+                <th className="th-sortable th-actions" style={{ cursor: 'default', textAlign: 'right' }}><span>Amount</span></th>
                 <th className="th-sortable" style={{ cursor: 'default' }}><span>Narration</span></th>
                 <th className="th-actions">Actions</th>
               </tr>
             </thead>
             <tbody>
               <AnimatePresence mode="popLayout" initial={false}>
-                {filtered.map(v => (
-                  <motion.tr
-                    key={v.id}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, x: -12 }}
-                    transition={{ duration: 0.18 }}
-                    className="data-row"
-                  >
-                    {/* Voucher No */}
-                    <td>
-                      <span className="type-badge" style={{ '--badge-color': accentColor } as React.CSSProperties}>
-                        {v.voucher_no}
-                      </span>
-                    </td>
+                {filtered.map(v => {
+                  const isRec = v.direction === 'receipt';
+                  const badgeColor = isRec ? '#10b981' : '#ef4444';
 
-                    {/* Date */}
-                    <td style={{ color: 'var(--c-text-muted)', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
-                      {formatDate(v.voucher_date)}
-                    </td>
+                  return (
+                    <motion.tr
+                      key={v.id}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, x: -12 }}
+                      transition={{ duration: 0.18 }}
+                      className="data-row"
+                    >
+                      {/* Voucher No */}
+                      <td data-label="Voucher #">
+                        <span className="type-badge" style={{ '--badge-color': badgeColor } as React.CSSProperties}>
+                          {v.voucher_no}
+                        </span>
+                      </td>
 
-                    {/* Main account */}
-                    <td className="td-title" style={{ maxWidth: 180 }}>
-                      <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {v.main_account_name}
-                      </span>
-                    </td>
+                      {/* Date */}
+                      <td data-label="Date" style={{ color: 'var(--c-text-muted)', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+                        {formatDate(v.voucher_date)}
+                      </td>
 
-                    {/* Party */}
-                    <td style={{ maxWidth: 160 }}>
-                      {v.party_account_name
-                        ? <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--c-text-muted)', fontSize: '0.875rem' }}>
-                            {v.party_account_name}
-                          </span>
-                        : <span style={{ color: 'var(--c-text-subtle)', fontStyle: 'italic' }}>—</span>
-                      }
-                    </td>
+                      {/* Voucher Type */}
+                      <td data-label="Type">
+                        <span style={{
+                          fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: '4px',
+                          background: isRec ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
+                          color: isRec ? '#10b981' : '#ef4444', display: 'inline-flex', alignItems: 'center', gap: '4px'
+                        }}>
+                          {isRec ? '↓ Money IN' : '↑ Money OUT'}
+                          <span style={{ opacity: 0.7, fontSize: '0.68rem' }}>({v.voucher_type})</span>
+                        </span>
+                      </td>
 
-                    {/* Amount (right-aligned, color-coded) */}
-                    <td style={{ textAlign: 'right', fontWeight: 700, color: accentColor, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-                      PKR {formatPKR(v.amount)}
-                    </td>
+                      {/* Main account */}
+                      <td className="td-title" data-label="Through Account" style={{ maxWidth: 160 }}>
+                        <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>
+                          {v.main_account_name}
+                        </span>
+                      </td>
 
-                    {/* Narration */}
-                    <td style={{ maxWidth: 220 }}>
-                      {v.details || v.remarks
-                        ? <div>
-                            {v.details && <p style={{ color: 'var(--c-text)', fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.details}</p>}
-                            {v.remarks && <p style={{ color: 'var(--c-text-muted)', fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>{v.remarks}</p>}
-                          </div>
-                        : <span style={{ color: 'var(--c-text-subtle)', fontStyle: 'italic' }}>—</span>
-                      }
-                    </td>
+                      {/* Party */}
+                      <td data-label="Party" style={{ maxWidth: 160 }}>
+                        {v.party_account_name
+                          ? <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--c-text-muted)', fontSize: '0.875rem' }}>
+                              {v.party_account_name}
+                            </span>
+                          : <span style={{ color: 'var(--c-text-subtle)', fontStyle: 'italic' }}>—</span>
+                        }
+                      </td>
 
-                    {/* Actions (Delete/Print) */}
-                    <td onClick={e => e.stopPropagation()}>
-                      <div className="row-actions">
-                        <Link href={`/vouchers/${v.id}/invoice`} target="_blank" className="action-btn" style={{ color: 'var(--c-text-muted)' }} title="Print Voucher">
-                          <Printer size={14} />
-                        </Link>
-                        <button
-                          className="action-btn delete"
-                          onClick={() => onDelete(v.id)}
-                          disabled={isPending}
-                          title="Delete voucher"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))}
+                      {/* Amount */}
+                      <td data-label="Amount" style={{ textAlign: 'right', fontWeight: 700, color: badgeColor, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                        {isRec ? '+' : '-'} PKR {formatPKR(v.amount)}
+                      </td>
+
+                      {/* Narration */}
+                      <td data-label="Narration" style={{ maxWidth: 220 }}>
+                        {v.details || v.remarks
+                          ? <div>
+                              {v.details && <p style={{ color: 'var(--c-text)', fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.details}</p>}
+                              {v.remarks && <p style={{ color: 'var(--c-text-muted)', fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>{v.remarks}</p>}
+                            </div>
+                          : <span style={{ color: 'var(--c-text-subtle)', fontStyle: 'italic' }}>—</span>
+                        }
+                      </td>
+
+                      {/* Actions */}
+                      <td onClick={e => e.stopPropagation()}>
+                        <div className="row-actions">
+                          <Link href={`/vouchers/${v.id}/invoice`} target="_blank" className="action-btn" style={{ color: 'var(--c-text-muted)' }} title="Print Voucher">
+                            <Printer size={14} />
+                          </Link>
+                          <button
+                            className="action-btn delete"
+                            onClick={() => onDelete(v.id)}
+                            disabled={isPending}
+                            title="Delete voucher"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  );
+                })}
               </AnimatePresence>
             </tbody>
           </table>
@@ -1306,7 +1415,7 @@ function JournalVoucherForm({
 
         {/* Dynamic Lines Table */}
         <div className="table-scroll" style={{ marginBottom: 20, overflow: 'visible' }}>
-          <table className="data-table" style={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}>
+          <table className="data-table table-keep" style={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}>
             <thead>
               <tr>
                 <th style={{ background: 'transparent', border: 'none', paddingLeft: 4, width: '40%' }}>Account Name <span className="required">*</span></th>
@@ -1741,7 +1850,7 @@ function JournalVoucherList({
         </div>
       ) : (
         <div className="table-scroll">
-          <table className="data-table" style={{ borderCollapse: 'collapse' }}>
+          <table className="data-table table-keep" style={{ borderCollapse: 'collapse' }}>
             <thead>
               <tr>
                 <th style={{ width: '40px' }}></th>
@@ -1834,7 +1943,7 @@ function JournalVoucherList({
                                 <Loader2 size={14} className="spin" /> Loading posting entries…
                               </div>
                             ) : (
-                              <table className="data-table" style={{ background: 'var(--c-bg-card)', border: '1.5px solid var(--c-border)', borderRadius: 8, width: '100%', fontSize: '0.82rem' }}>
+                              <table className="data-table table-keep" style={{ background: 'var(--c-bg-card)', border: '1.5px solid var(--c-border)', borderRadius: 8, width: '100%', fontSize: '0.82rem' }}>
                                 <thead>
                                   <tr style={{ background: 'var(--c-bg-input)' }}>
                                     <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--c-text-muted)' }}>Account Name</th>
@@ -1886,35 +1995,37 @@ function JournalVoucherList({
 
 function TabBar({ activeType, onChange }: { activeType: string; onChange: (v: any) => void }) {
   const tabs = [
-    { id: 'Cash Receipt', label: 'Cash Receipt', icon: <ArrowDownToLine size={15} /> },
-    { id: 'Cash Payment', label: 'Cash Payment', icon: <ArrowUpFromLine size={15} /> },
-    { id: 'Bank Receipt', label: 'Bank Receipt', icon: <Landmark size={15} /> },
-    { id: 'Bank Payment', label: 'Bank Payment', icon: <Landmark size={15} /> },
-    { id: 'General', label: 'Journal', icon: <Scale size={15} /> },
+    { id: 'Unified', label: 'Vouchers (Receipt & Payment)', icon: <ArrowLeftRight size={15} /> },
+    { id: 'General', label: 'Journal Voucher (JV)', icon: <Scale size={15} /> },
+    { id: 'Contra Voucher', label: 'Contra Voucher (CV)', icon: <Landmark size={15} /> },
   ];
 
   return (
     <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap', overflowX: 'auto' }} className="hide-scroll">
-      {tabs.map(t => (
-        <button
-          key={t.id}
-          type="button"
-          onClick={() => onChange(t.id as any)}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: '6px',
-            padding: '8px 16px', borderRadius: '100px', fontSize: '0.9rem',
-            fontWeight: 500, cursor: 'pointer',
-            backgroundColor: activeType === t.id ? 'var(--c-emerald)' : 'var(--c-surface)',
-            color: activeType === t.id ? '#fff' : 'var(--c-text)',
-            border: `1px solid ${activeType === t.id ? 'var(--c-emerald)' : 'var(--c-border)'}`,
-            transition: 'all 0.2s ease',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          {t.icon}
-          {t.label}
-        </button>
-      ))}
+      {tabs.map(t => {
+        const isActive = activeType === t.id || (t.id === 'Unified' && ['Cash Receipt', 'Cash Payment', 'Bank Receipt', 'Bank Payment'].includes(activeType));
+        return (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => onChange(t.id as any)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
+              padding: '8px 18px', borderRadius: '100px', fontSize: '0.9rem',
+              fontWeight: 600, cursor: 'pointer',
+              backgroundColor: isActive ? 'var(--c-emerald)' : 'var(--c-surface)',
+              color: isActive ? '#fff' : 'var(--c-text)',
+              border: `1.5px solid ${isActive ? 'var(--c-emerald)' : 'var(--c-border)'}`,
+              transition: 'all 0.2s ease',
+              whiteSpace: 'nowrap',
+              boxShadow: isActive ? '0 2px 8px rgba(16, 185, 129, 0.25)' : 'none'
+            }}
+          >
+            {t.icon}
+            {t.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -1953,10 +2064,7 @@ export default function VouchersModule({
   }, [dark]);
 
   // ── Auth
-  
-  
   const handleLogin = (u: any) => { 
-     
     sessionStorage.setItem('erp_user', JSON.stringify(u));
     if (typeof addToast === 'function') addToast(`Welcome back, ${u.name}!`); 
   };
@@ -1975,8 +2083,8 @@ export default function VouchersModule({
   const [vouchers, setVouchers] = useState<Voucher[]>(initialVouchers);
   const [journalVouchers, setJournalVouchers] = useState<JournalVoucher[]>(initialJournalVouchers);
 
-  // ── UI State
-  const [activeTab, setActiveTab]           = useState<VoucherType>('Cash Receipt');
+  // ── UI State (Defaults to Unified single-window voucher)
+  const [activeTab, setActiveTab]           = useState<string>('Unified');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isPending, startTransition]        = useTransition();
   const { toasts, addToast, removeToast }   = useToast();
@@ -2015,7 +2123,6 @@ export default function VouchersModule({
     lines: JournalLineState[]
   ) => {
     startTransition(async () => {
-      // Prepare payload with formatted floats
       const formattedLines = lines.map(l => ({
         account_id: l.account_id,
         remarks: l.remarks.trim() || null,
@@ -2061,16 +2168,12 @@ export default function VouchersModule({
     });
   };
 
-  // ── Derive accounts and vouchers for current tab
-  const mainAccounts  = activeTab.startsWith('Cash') ? cashAccounts : bankAccounts;
-  const tabVouchers   = vouchers.filter(v => v.voucher_type === activeTab);
+  const contraVouchers = vouchers.filter(v => v.voucher_type === 'Contra Voucher');
 
   // Hydration guard
   if (!mounted) {
     return <div style={{ visibility: 'hidden', minHeight: '100vh' }} suppressHydrationWarning />;
   }
-
-  
 
   return (
     <div className="app-shell" suppressHydrationWarning>
@@ -2109,7 +2212,7 @@ export default function VouchersModule({
               >
                 {/* Journal Voucher Form */}
                 <JournalVoucherForm
-                  accounts={partyAccounts} // passing all accounts
+                  accounts={partyAccounts}
                   onSave={handleSaveJournal}
                   isPending={isPending}
                 />
@@ -2138,35 +2241,33 @@ export default function VouchersModule({
                 />
 
                 {/* Contra Voucher List */}
-                <VoucherList
-                  vouchers={tabVouchers}
-                  activeType={activeTab}
+                <UnifiedVoucherList
+                  vouchers={contraVouchers}
                   onDelete={handleDelete}
                   isPending={isPending}
                 />
               </motion.div>
             ) : (
               <motion.div
-                key={activeTab}
+                key="unified"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.2 }}
                 style={{ display: 'flex', flexDirection: 'column', gap: 20 }}
               >
-                {/* Cash/Bank Form */}
-                <VoucherForm
-                  activeType={activeTab}
-                  mainAccounts={mainAccounts}
+                {/* Unified Receipt & Payment Form */}
+                <UnifiedVoucherForm
+                  cashAccounts={cashAccounts}
+                  bankAccounts={bankAccounts}
                   partyAccounts={partyAccounts}
                   onSave={handleSave}
                   isPending={isPending}
                 />
 
-                {/* Cash/Bank List */}
-                <VoucherList
-                  vouchers={tabVouchers}
-                  activeType={activeTab}
+                {/* Unified All Vouchers List */}
+                <UnifiedVoucherList
+                  vouchers={vouchers}
                   onDelete={handleDelete}
                   isPending={isPending}
                 />

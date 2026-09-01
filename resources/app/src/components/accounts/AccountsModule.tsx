@@ -626,14 +626,14 @@ function AccountTable({
                 return (
                   <tr key={acc.id} className="data-row">
                     <td className="td-num">{i + 1}</td>
-                    <td>
+                    <td data-label="Type">
                       <span className="type-badge" style={{ '--badge-color': atype?.color ?? '#6b7280' } as React.CSSProperties}>
                         <Icon size={12} />{atype?.label ?? acc.account_type}
                       </span>
                     </td>
-                    <td className="td-title">{acc.account_title}</td>
-                    <td><span className="area-tag"><MapPin size={12} />{acc.region}</span></td>
-                    <td className="td-contact"><Phone size={12} />{acc.contact_number ?? '—'}</td>
+                    <td className="td-title" data-label="Title">{acc.account_title}</td>
+                    <td data-label="Area / Region"><span className="area-tag"><MapPin size={12} />{acc.region}</span></td>
+                    <td className="td-contact" data-label="Contact"><Phone size={12} />{acc.contact_number ?? '—'}</td>
                     <td>
                       <div className="row-actions">
                         <button className="action-btn edit" onClick={() => onEdit(acc)} disabled={isPending} title="Edit"><Edit3 size={14} /></button>
