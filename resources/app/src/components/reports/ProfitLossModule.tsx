@@ -184,38 +184,6 @@ export default function ProfitLossModule({ defaultFrom, defaultTo }: { defaultFr
             </p>
           </div>
 
-          {/* ─── CONTAINER SUMMARY BANNER (If filtered by Bilti) ─── */}
-          {data.containerSummary && (
-            <div style={{ marginBottom: '24px', padding: '16px 20px', borderRadius: '8px', background: data.containerSummary.isProfitable ? '#f0fdf4' : '#fef2f2', border: `1.5px solid ${data.containerSummary.isProfitable ? '#bbf7d0' : '#fecaca'}` }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', color: data.containerSummary.isProfitable ? '#166534' : '#991b1b', letterSpacing: '0.5px' }}>
-                  📦 Container Batch: {data.containerSummary.biltiNo}
-                </span>
-                <span style={{ fontSize: '0.8rem', fontWeight: 700, padding: '2px 8px', borderRadius: '4px', background: data.containerSummary.isProfitable ? '#22c55e' : '#ef4444', color: '#fff' }}>
-                  {data.containerSummary.isProfitable ? 'NET PROFIT' : 'NET LOSS'} ({data.containerSummary.profitMargin.toFixed(1)}%)
-                </span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '14px', fontSize: '0.85rem' }}>
-                <div>
-                  <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Total Purchase Cost:</div>
-                  <strong style={{ color: '#0f172a' }}>PKR {formatPKR(data.containerSummary.totalPurchasedCost)}</strong>
-                  <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Qty: {data.containerSummary.totalPurchasedQty} units</div>
-                </div>
-                <div>
-                  <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Total Sales Revenue:</div>
-                  <strong style={{ color: '#059669' }}>PKR {formatPKR(data.containerSummary.totalSalesRevenue)}</strong>
-                  <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Sold: {data.containerSummary.totalSoldQty} units</div>
-                </div>
-                <div>
-                  <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Container Gross Margin:</div>
-                  <strong style={{ color: data.containerSummary.isProfitable ? '#16a34a' : '#dc2626', fontSize: '0.95rem' }}>
-                    PKR {formatPKR(data.containerSummary.containerProfit)}
-                  </strong>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* ─── SECTION 1: TRADING PROFIT ─── */}
           <div style={{ marginBottom: '30px' }}>
             <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px', color: '#0f172a', fontWeight: 700, margin: '0 0 12px 0', padding: '6px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
@@ -228,8 +196,8 @@ export default function ProfitLossModule({ defaultFrom, defaultTo }: { defaultFr
                   <th style={{ padding: '6px 8px', textAlign: 'left', color: '#475569', width: '40px' }}>#</th>
                   <th style={{ padding: '6px 8px', textAlign: 'left', color: '#475569' }}>Item Description</th>
                   <th style={{ padding: '6px 8px', textAlign: 'right', color: '#475569', width: '80px' }}>Qty Sold</th>
-                  <th style={{ padding: '6px 8px', textAlign: 'right', color: '#475569', width: '110px' }}>Avg Purchase Rate</th>
-                  <th style={{ padding: '6px 8px', textAlign: 'right', color: '#475569', width: '110px' }}>Avg Sell Rate</th>
+                  <th style={{ padding: '6px 8px', textAlign: 'right', color: '#475569', width: '110px' }}>Purchase Rate</th>
+                  <th style={{ padding: '6px 8px', textAlign: 'right', color: '#475569', width: '110px' }}>Sell Rate</th>
                   <th style={{ padding: '6px 8px', textAlign: 'right', color: '#475569', width: '130px' }}>Profit / Loss</th>
                 </tr>
               </thead>

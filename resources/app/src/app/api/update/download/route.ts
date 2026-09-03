@@ -9,17 +9,19 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
-    const { downloadUrl } = await req.json();
+    const { downloadUrl, patchUrl } = await req.json();
 
-    if (!downloadUrl) {
-      return new Response(JSON.stringify({ error: 'Missing downloadUrl' }), {
+    const targetUrl = patchUrl || downloadUrl;
+    if (!targetUrl) {
+      return new Response(JSON.stringify({ error: 'Missing downloadUrl or patchUrl' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
     const tempDir = process.env.TEMP || process.env.TMP || 'C:\\Windows\\Temp';
-    const installerPath = path.join(tempDir, `SolarERP_Update_${Date.now()}.exe`);
+    const isPatch = targetUrl.endsWith('.zip');
+    const updateFile = path.join(tempDir, isPatch ? `SolarERP_Patch_${Date.now()}.zip` : `SolarERP_Update_${Date.now()}.exe`);
 
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
@@ -29,7 +31,7 @@ export async function POST(req: NextRequest) {
         }
 
         try {
-          await downloadWithProgress(downloadUrl, installerPath, (loaded, total) => {
+          await downloadWithProgress(targetUrl, updateFile, (loaded, total) => {
             const percent = total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
             sendEvent({
               percent,
@@ -41,14 +43,21 @@ export async function POST(req: NextRequest) {
             });
           });
 
-          sendEvent({ percent: 100, status: 'applying', message: 'Launching update installer...' });
+          sendEvent({ percent: 100, status: 'applying', message: isPatch ? 'Applying delta update...' : 'Launching update installer...' });
 
           // Write detached launcher batch script to avoid any file locking issues
           if (process.platform === 'win32') {
             const batPath = path.join(tempDir, `run_solar_update_${Date.now()}.bat`);
-            const batContent = `@echo off\r\ntimeout /t 2 /nobreak >nul\r\nstart "" "${installerPath}" /SILENT\r\nexit\r\n`;
-            fs.writeFileSync(batPath, batContent);
+            
+            let batContent = '';
+            if (isPatch) {
+              const appRoot = path.join(process.cwd(), '..', '..');
+              batContent = `@echo off\r\ntimeout /t 2 /nobreak >nul\r\ntar -xf "${updateFile}" -C "${appRoot}"\r\nstart "" "${path.join(appRoot, 'SolarERP.exe')}"\r\nexit\r\n`;
+            } else {
+              batContent = `@echo off\r\ntimeout /t 2 /nobreak >nul\r\nstart "" "${updateFile}" /SILENT\r\nexit\r\n`;
+            }
 
+            fs.writeFileSync(batPath, batContent);
             exec(`cmd.exe /c start "" "${batPath}"`, { windowsHide: true });
 
             setTimeout(() => {

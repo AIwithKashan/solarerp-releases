@@ -22,7 +22,7 @@ import { getBackupConfig, getGoogleAuthUrl, disconnectGoogleDrive, backupToCloud
 import { checkForAppUpdates, downloadAndRunUpdate, type UpdateInfo } from '@/app/settings/update-actions';
 import type { BusinessSettings } from '@/types/database';
 
-const CURRENT_APP_VERSION = '2.0.6';
+const CURRENT_APP_VERSION = '2.0.7';
 
 const PAKISTAN_AREAS = [
   'Serai Naurang', 'Bannu', 'Lakki Marwat', 'Karak', 'Kohat',
@@ -423,7 +423,10 @@ export default function SettingsModule({ initialSettings }: { initialSettings: B
       const response = await fetch('/api/update/download', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ downloadUrl: updateInfo.downloadUrl })
+        body: JSON.stringify({ 
+          downloadUrl: updateInfo.downloadUrl,
+          patchUrl: updateInfo.patchUrl
+        })
       });
 
       if (!response.ok || !response.body) {

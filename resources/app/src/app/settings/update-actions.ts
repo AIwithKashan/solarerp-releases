@@ -7,7 +7,7 @@ import http from 'http';
 import { spawn } from 'child_process';
 import type { ActionResult } from '@/types/database';
 
-const CURRENT_APP_VERSION = '2.0.6';
+const CURRENT_APP_VERSION = '2.0.7';
 
 export interface UpdateInfo {
   hasUpdate: boolean;
@@ -16,6 +16,7 @@ export interface UpdateInfo {
   releaseDate: string;
   changelog: string[];
   downloadUrl?: string;
+  patchUrl?: string;
   isUpToDate: boolean;
 }
 
@@ -58,6 +59,7 @@ export async function checkForAppUpdates(): Promise<ActionResult<UpdateInfo>> {
         releaseDate: remoteData?.releaseDate || new Date().toISOString().split('T')[0],
         changelog,
         downloadUrl: remoteData?.downloadUrl || '',
+        patchUrl: remoteData?.patchUrl || '',
         isUpToDate: !hasUpdate
       }
     };
@@ -81,9 +83,10 @@ function compareVersions(v1: string, v2: string): number {
   return 0;
 }
 
-export async function downloadAndRunUpdate(downloadUrl?: string): Promise<ActionResult<string>> {
+export async function downloadAndRunUpdate(downloadUrl?: string, patchUrl?: string): Promise<ActionResult<string>> {
   try {
-    if (!downloadUrl) {
+    const targetUrl = patchUrl || downloadUrl;
+    if (!targetUrl) {
       return {
         success: false,
         error: 'No update package URL specified.'
@@ -91,16 +94,30 @@ export async function downloadAndRunUpdate(downloadUrl?: string): Promise<Action
     }
 
     const tempDir = process.env.TEMP || process.env.TMP || 'C:\\Windows\\Temp';
-    const installerPath = path.join(tempDir, `SolarERP_Update_${Date.now()}.exe`);
+    const isPatch = targetUrl.endsWith('.zip');
+    const updateFile = path.join(tempDir, isPatch ? `SolarERP_Patch_${Date.now()}.zip` : `SolarERP_Update_${Date.now()}.exe`);
 
-    await downloadFile(downloadUrl, installerPath);
+    await downloadFile(targetUrl, updateFile);
 
-    // Write a detached runner batch script that waits for current app to exit, then launches installer
     if (process.platform === 'win32') {
       const batPath = path.join(tempDir, `run_solar_update_${Date.now()}.bat`);
-      const batContent = `@echo off\r\ntimeout /t 2 /nobreak >nul\r\nstart "" "${installerPath}" /SILENT\r\nexit\r\n`;
-      fs.writeFileSync(batPath, batContent);
+      
+      let batContent = '';
+      if (isPatch) {
+        // App root is the folder containing SolarERP.exe (e.g. AppData\Local\Programs\SolarERP)
+        // process.cwd() or process.resourcesPath will give us the root
+        // In packaged electron, process.resourcesPath is AppRoot\resources
+        const appRoot = path.join(process.cwd(), '..', '..');
+        
+        // Use tar built into Windows 10 to extract zip over resources\app
+        batContent = `@echo off\r\ntimeout /t 2 /nobreak >nul\r\necho Applying Delta Update...\r\n`;
+        batContent += `tar -xf "${updateFile}" -C "${appRoot}"\r\n`;
+        batContent += `start "" "${path.join(appRoot, 'SolarERP.exe')}"\r\nexit\r\n`;
+      } else {
+        batContent = `@echo off\r\ntimeout /t 2 /nobreak >nul\r\nstart "" "${updateFile}" /SILENT\r\nexit\r\n`;
+      }
 
+      fs.writeFileSync(batPath, batContent);
       const { exec } = require('child_process');
       exec(`cmd.exe /c start "" "${batPath}"`, { windowsHide: true });
 
@@ -111,7 +128,7 @@ export async function downloadAndRunUpdate(downloadUrl?: string): Promise<Action
 
     return {
       success: true,
-      data: 'Update downloaded! Installer is launching to apply the update.'
+      data: isPatch ? 'Delta Update downloaded! Applying patch...' : 'Update downloaded! Installer is launching to apply the update.'
     };
   } catch (err) {
     return {

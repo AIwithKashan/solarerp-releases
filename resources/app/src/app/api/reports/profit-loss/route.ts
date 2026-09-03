@@ -85,12 +85,11 @@ export async function GET(request: Request) {
         const profit = (effectiveSellRate - avgCost) * item.quantity;
         grossTradingProfit += profit;
 
-        const key = `${item.item_name}|${item.power_watt || 0}|${item.bilti_no || 'none'}`;
+        const key = `${item.item_name}|${item.power_watt || 0}|${item.bilti_no || 'none'}|${avgCost.toFixed(2)}|${effectiveSellRate.toFixed(2)}`;
         const existing = tradingItems.find(t => t.key === key);
         if (existing) {
           existing.qtySold += item.quantity;
           existing.totalSaleValue += (effectiveSellRate * item.quantity);
-          existing.sellRate = existing.totalSaleValue / existing.qtySold;
           existing.profit += profit;
         } else {
           tradingItems.push({
@@ -111,17 +110,17 @@ export async function GET(request: Request) {
     // Container specific metrics
     let containerSummary: any = null;
     if (biltiParam) {
-      const totalPurchasedCost = purchases.reduce((sum, p) => sum + p.amount, 0);
-      const totalPurchasedQty = purchases.reduce((sum, p) => sum + p.quantity, 0);
+      // Instead of Total Purchased Cost (all stock), use Cost of Goods Sold (COGS)
+      const totalCOGS = tradingItems.reduce((sum, t) => sum + (t.qtySold * t.purchaseRate), 0);
       const totalSalesRevenue = tradingItems.reduce((sum, t) => sum + t.totalSaleValue, 0);
       const totalSoldQty = tradingItems.reduce((sum, t) => sum + t.qtySold, 0);
-      const containerProfit = totalSalesRevenue - totalPurchasedCost;
+      const containerProfit = totalSalesRevenue - totalCOGS;
       const profitMargin = totalSalesRevenue > 0 ? (containerProfit / totalSalesRevenue) * 100 : 0;
 
       containerSummary = {
         biltiNo: biltiParam,
-        totalPurchasedCost,
-        totalPurchasedQty,
+        totalPurchasedCost: totalCOGS, 
+        totalPurchasedQty: totalSoldQty, 
         totalSalesRevenue,
         totalSoldQty,
         containerProfit,
