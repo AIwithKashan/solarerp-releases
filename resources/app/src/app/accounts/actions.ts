@@ -64,6 +64,7 @@ export async function createAccount(payload: AccountInsert): Promise<ActionResul
         account_title: titleNorm,
         region: payload.region.trim(),
         contact_number: contactNorm || null,
+        monthly_salary: payload.monthly_salary ? Number(payload.monthly_salary) : 0,
       }
     });
 
@@ -88,6 +89,9 @@ export async function updateAccount(payload: AccountUpdate): Promise<ActionResul
     if (fields.region) updateFields.region = fields.region.trim();
     if ('contact_number' in fields) {
       updateFields.contact_number = fields.contact_number?.trim() || null;
+    }
+    if ('monthly_salary' in fields) {
+      updateFields.monthly_salary = fields.monthly_salary !== undefined && fields.monthly_salary !== null ? Number(fields.monthly_salary) : 0;
     }
 
     const currentRecord = await prisma.account.findUnique({ where: { id } });

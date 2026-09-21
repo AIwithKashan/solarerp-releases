@@ -180,7 +180,7 @@ export default function OpeningBalancesModule({
               style={{ flex: 1 }}
             >
               <option value="">Select Account...</option>
-              {options.map(o => <option key={o.id} value={o.id}>{o.account_title}</option>)}
+              {options.map(o => <option key={o.id} value={o.id}>{o.account_title} ({o.account_type})</option>)}
             </select>
             <input 
               type="number"

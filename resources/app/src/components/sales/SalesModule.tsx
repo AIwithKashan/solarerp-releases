@@ -222,6 +222,9 @@ function CustomerCombobox({ valueId, valueName, onChange, customers, placeholder
         <ul ref={listRef} className="combobox-dropdown" role="listbox">
           {filtered.map((cust, idx) => {
             const due = (cust as any).total_due !== undefined ? (cust as any).total_due : cust.balance;
+            const isSupplier = cust.account_type === 'Suppliers';
+            const isStaff = cust.account_type === 'Staff';
+            const isCust = !isSupplier && !isStaff;
             return (
               <li key={cust.id} data-cbitem
                 className={cls('combobox-item', valueId === cust.id && 'selected', cursor === idx && 'highlighted')}
@@ -229,11 +232,28 @@ function CustomerCombobox({ valueId, valueName, onChange, customers, placeholder
                 onMouseEnter={() => setCursor(idx)}
                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}
                 role="option" aria-selected={valueId === cust.id}>
-                <span>{cust.account_title}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontWeight: 600 }}>{cust.account_title}</span>
+                  {isSupplier && (
+                    <span style={{ fontSize: '0.68rem', padding: '1px 6px', borderRadius: '4px', background: '#f59e0b18', color: '#d97706', fontWeight: 700, border: '1px solid #f59e0b30' }}>
+                      Supplier
+                    </span>
+                  )}
+                  {isStaff && (
+                    <span style={{ fontSize: '0.68rem', padding: '1px 6px', borderRadius: '4px', background: '#ec489918', color: '#db2777', fontWeight: 700, border: '1px solid #ec489930' }}>
+                      Staff
+                    </span>
+                  )}
+                  {isCust && (
+                    <span style={{ fontSize: '0.68rem', padding: '1px 6px', borderRadius: '4px', background: '#8b5cf618', color: '#7c3aed', fontWeight: 700, border: '1px solid #8b5cf630' }}>
+                      Customer
+                    </span>
+                  )}
+                </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   {due !== undefined && due !== 0 && (
-                    <span style={{ fontSize: '0.72rem', padding: '1px 6px', borderRadius: '4px', background: due > 0 ? '#fef2f2' : 'var(--c-primary-light)', color: due > 0 ? '#ef4444' : 'var(--c-primary-dark)', fontWeight: 700 }}>
-                      {due > 0 ? `Due: PKR ${formatPKR(due)}` : `Adv: PKR ${formatPKR(Math.abs(due))}`}
+                    <span style={{ fontSize: '0.72rem', padding: '1px 6px', borderRadius: '4px', background: isSupplier ? (due < 0 ? '#fef2f2' : '#f0fdf4') : (due > 0 ? '#fef2f2' : 'var(--c-primary-light)'), color: isSupplier ? (due < 0 ? '#ef4444' : '#16a34a') : (due > 0 ? '#ef4444' : 'var(--c-primary-dark)'), fontWeight: 700 }}>
+                      {isSupplier ? (due < 0 ? `Payable: PKR ${formatPKR(Math.abs(due))}` : `Receivable: PKR ${formatPKR(due)}`) : (due > 0 ? `Due: PKR ${formatPKR(due)}` : `Adv: PKR ${formatPKR(Math.abs(due))}`)}
                     </span>
                   )}
                   {valueId === cust.id && <Check size={13} />}
@@ -253,14 +273,14 @@ function CustomerCombobox({ valueId, valueName, onChange, customers, placeholder
               {customers.length === 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '4px' }}>
                   <span style={{ fontSize: '0.85rem', color: 'var(--c-text-muted)', whiteSpace: 'normal' }}>
-                    No customers found. Add a customer in Account Management first.
+                    No party accounts found (Customers, Suppliers, or Staff). Add an account in Account Management first.
                   </span>
                   <Link href="/accounts" className="btn-primary" style={{ padding: '6px 12px', fontSize: '0.8rem', minHeight: 'auto', display: 'inline-flex', alignSelf: 'flex-start', textDecoration: 'none' }}>
                     <Plus size={12} /> Go to Accounts
                   </Link>
                 </div>
               ) : (
-                "No customers matched"
+                "No party accounts matched"
               )}
             </li>
           )}
@@ -705,6 +725,8 @@ function SaleForm({
   const [customer_name, setCustomerName]     = useState('');
   const [customer_phone, setCustomerPhone]   = useState('');
   const [customer_area, setCustomerArea]     = useState('');
+
+  const selectedCustomer = customers.find(c => c.id === customer_id);
   const [reference, setReference]             = useState('');
   const [sale_date, setSaleDate]             = useState(new Date().toISOString().split('T')[0]);
   const [discount_amount, setDiscountAmt]    = useState(0);
@@ -924,6 +946,50 @@ function SaleForm({
               const selectedCustomer = customers.find(c => c.id === customer_id);
               if (!selectedCustomer) return null;
               const due = (selectedCustomer as any).total_due !== undefined ? (selectedCustomer as any).total_due : (selectedCustomer.balance || 0);
+              const isSupplier = selectedCustomer.account_type === 'Suppliers';
+              const isStaff = selectedCustomer.account_type === 'Staff';
+              const salesDue = (selectedCustomer as any).sales_due || 0;
+              const purchasesPayable = (selectedCustomer as any).purchases_payable || 0;
+
+              if (isSupplier) {
+                return (
+                  <div style={{ marginTop: '6px', padding: '8px 10px', background: 'var(--c-bg-input)', borderRadius: '6px', border: '1px solid var(--c-border)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '0.75rem', color: '#d97706', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Package size={12} /> Supplier Account Selected
+                      </span>
+                      <span style={{ fontSize: '0.78rem', fontWeight: 800, color: due < 0 ? '#ef4444' : '#16a34a' }}>
+                        {due < 0 ? `Net Payable to Supplier: PKR ${formatPKR(Math.abs(due))}` : due > 0 ? `Net Receivable: PKR ${formatPKR(due)}` : 'Balance: PKR 0.00'}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '14px', fontSize: '0.72rem', color: 'var(--c-text-muted)', flexWrap: 'wrap' }}>
+                      <span>We owe them (Purchases): <strong style={{ color: '#ef4444' }}>PKR {formatPKR(purchasesPayable)}</strong></span>
+                      <span>They owe us (Sales): <strong style={{ color: '#16a34a' }}>PKR {formatPKR(salesDue)}</strong></span>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (isStaff) {
+                return (
+                  <div style={{ marginTop: '6px', padding: '8px 10px', background: 'var(--c-bg-input)', borderRadius: '6px', border: '1px solid var(--c-border)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.75rem', color: '#db2777', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Briefcase size={12} /> Staff Member Selected
+                      </span>
+                      <span style={{ fontSize: '0.78rem', fontWeight: 800, color: due > 0 ? '#ef4444' : 'var(--c-primary)' }}>
+                        {due > 0 ? `Due / Advance: PKR ${formatPKR(due)}` : 'No Pending Due'}
+                      </span>
+                    </div>
+                    {selectedCustomer.monthly_salary ? (
+                      <div style={{ fontSize: '0.72rem', color: 'var(--c-text-muted)', marginTop: '2px' }}>
+                        Monthly Salary: <strong style={{ color: 'var(--c-text)' }}>PKR {formatPKR(selectedCustomer.monthly_salary)}</strong>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              }
+
               return (
                 <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'var(--c-bg-input)', borderRadius: '6px', border: '1px solid var(--c-border)' }}>
                   <span style={{ fontSize: '0.75rem', color: 'var(--c-text-muted)', fontWeight: 600 }}>Previous Khata / Due:</span>
@@ -1349,6 +1415,16 @@ function SaleForm({
                     }}
                   >
                     <option value="">-- Select Payment Account --</option>
+                    {selectedCustomer && selectedCustomer.account_type === 'Staff' && (
+                      <option value={`${selectedCustomer.id}:Deduct from Monthly Salary (Staff Advance)`}>
+                        💼 Deduct from Monthly Salary (Staff Advance)
+                      </option>
+                    )}
+                    {selectedCustomer && selectedCustomer.account_type === 'Suppliers' && (
+                      <option value={`${selectedCustomer.id}:Contra Offset (Supplier Balance)`}>
+                        🤝 Settle / Offset from Supplier Balance (Contra)
+                      </option>
+                    )}
                     {bankAccounts.map(b => (
                       <option key={b.id} value={`${b.id}:${b.account_title}`}>
                         {b.account_title}
@@ -1403,19 +1479,65 @@ function SaleForm({
           </div>
         )}
 
-        <button type="button" className="btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem', minHeight: 'auto' }}
-          onClick={() => {
-            const defaultAcc = bankAccounts.find(a => a.account_type === 'Cash Account') || bankAccounts[0];
-            setPayments(prev => [...prev, { 
-              payment_account_id: defaultAcc?.id || null, 
-              payment_account_name: defaultAcc?.account_title || 'Cash in Hand', 
-              pay_date: new Date().toISOString().split('T')[0], 
-              amount: 0, 
-              remarks: null 
-            }]);
-          }}>
-          <Plus size={14} /> Add Payment Row
-        </button>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <button type="button" className="btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem', minHeight: 'auto' }}
+            onClick={() => {
+              const defaultAcc = bankAccounts.find(a => a.account_type === 'Cash Account') || bankAccounts[0];
+              setPayments(prev => [...prev, { 
+                payment_account_id: defaultAcc?.id || null, 
+                payment_account_name: defaultAcc?.account_title || 'Cash in Hand', 
+                pay_date: new Date().toISOString().split('T')[0], 
+                amount: 0, 
+                remarks: null 
+              }]);
+            }}>
+            <Plus size={14} /> Add Payment Row
+          </button>
+
+          {selectedCustomer && selectedCustomer.account_type === 'Staff' && (
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{ padding: '6px 12px', fontSize: '0.8rem', minHeight: 'auto', background: '#ec489915', color: '#db2777', borderColor: '#ec489940', fontWeight: 600 }}
+              onClick={() => {
+                setPayments([
+                  {
+                    payment_account_id: selectedCustomer.id,
+                    payment_account_name: 'Deduct from Monthly Salary (Staff Advance)',
+                    pay_date: new Date().toISOString().split('T')[0],
+                    amount: net_payable,
+                    remarks: `Deducted from ${selectedCustomer.account_title}'s salary`
+                  }
+                ]);
+              }}
+            >
+              💼 1-Click: Deduct Full from Salary
+            </button>
+          )}
+
+          {selectedCustomer && selectedCustomer.account_type === 'Suppliers' && (
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{ padding: '6px 12px', fontSize: '0.8rem', minHeight: 'auto', background: '#f59e0b15', color: '#d97706', borderColor: '#f59e0b40', fontWeight: 600 }}
+              onClick={() => {
+                const purchasesPayable = (selectedCustomer as any).purchases_payable || 0;
+                const settleAmount = purchasesPayable > 0 ? Math.min(net_payable, purchasesPayable) : net_payable;
+                setPayments([
+                  {
+                    payment_account_id: selectedCustomer.id,
+                    payment_account_name: 'Contra Offset (Supplier Balance)',
+                    pay_date: new Date().toISOString().split('T')[0],
+                    amount: settleAmount,
+                    remarks: `Offset against supplier purchases balance (${selectedCustomer.account_title})`
+                  }
+                ]);
+              }}
+            >
+              🤝 1-Click: Settle from Supplier Balance (Contra)
+            </button>
+          )}
+        </div>
 
         <div style={{ marginTop: '16px', textAlign: 'right', fontSize: '0.95rem', fontWeight: 700 }}>
           Total Received: <span style={{ color: 'var(--c-primary)', marginLeft: '6px' }}>PKR {formatPKR(total_received)}</span>

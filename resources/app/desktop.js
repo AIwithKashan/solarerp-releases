@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, shell } = require('electron');
 const { spawn, exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
@@ -145,6 +145,18 @@ function autoMigrateDatabase(dbFilePath, callback) {
             }
           }
         });
+
+        db.all("PRAGMA table_info(Account)", (accErr, rows) => {
+          if (!accErr && rows && rows.length > 0) {
+            const hasSalary = rows.some(r => r.name === 'monthly_salary');
+            if (!hasSalary) {
+              console.log('[Migration]: Adding monthly_salary to Account table...');
+              db.run("ALTER TABLE Account ADD COLUMN monthly_salary REAL DEFAULT 0", (alterErr) => {
+                if (alterErr) console.warn('[Migration]: Account monthly_salary alter notice:', alterErr.message);
+              });
+            }
+          }
+        });
       });
 
       db.close(() => {
@@ -228,6 +240,12 @@ function createWindow() {
   });
 
   mainWindow.loadURL('http://localhost:3000');
+
+  // Open external links and OAuth authorization windows in the user's default browser (Chrome, Edge, etc.)
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: 'deny' };
+  });
 
   mainWindow.on('closed', () => {
     mainWindow = null;

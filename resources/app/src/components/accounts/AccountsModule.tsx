@@ -286,6 +286,7 @@ interface FormState {
   title: string;
   area: string;
   contact: string;
+  monthly_salary: string;
 }
 
 // Separate type for validation error messages (plain strings)
@@ -294,10 +295,11 @@ interface FormErrors {
   title?: string;
   area?: string;
   contact?: string;
+  monthly_salary?: string;
   duplicate?: string;
 }
 
-const EMPTY_FORM: FormState = { type: '', title: '', area: '', contact: '' };
+const EMPTY_FORM: FormState = { type: '', title: '', area: '', contact: '', monthly_salary: '' };
 
 function AccountForm({
   onAdd, editTarget, onEditDone, isPending, accounts
@@ -314,10 +316,11 @@ function AccountForm({
   useEffect(() => {
     if (editTarget) {
       setForm({
-        type:    editTarget.account_type,
-        title:   editTarget.account_title,
-        area:    editTarget.region,
-        contact: editTarget.contact_number ?? '',
+        type:           editTarget.account_type,
+        title:          editTarget.account_title,
+        area:           editTarget.region,
+        contact:        editTarget.contact_number ?? '',
+        monthly_salary: editTarget.monthly_salary ? String(editTarget.monthly_salary) : '',
       });
     } else {
       setForm(EMPTY_FORM);
@@ -346,6 +349,7 @@ function AccountForm({
       account_title:  form.title.trim(),
       region:         form.area.trim(),
       contact_number: form.contact.trim() || null,
+      monthly_salary: form.type === 'Staff' && form.monthly_salary ? parseFloat(form.monthly_salary) : 0,
     };
 
     if (editTarget) {
@@ -464,6 +468,31 @@ function AccountForm({
           </div>
           {errors.contact && <p className="field-error"><AlertCircle size={12} />{errors.contact}</p>}
         </div>
+
+        {/* Monthly Salary for Staff */}
+        {form.type === 'Staff' && (
+          <div className="field-group animate-fade-in">
+            <label className="field-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>Monthly Salary (PKR)</span>
+              <span className="label-type-pill" style={{ background: '#ec489920', color: '#ec4899' }}>Staff Payroll</span>
+            </label>
+            <div className="input-wrapper">
+              <Banknote size={16} className="input-icon" />
+              <input
+                type="number"
+                min="0"
+                step="any"
+                className="field-input"
+                placeholder="e.g. 45000"
+                value={form.monthly_salary}
+                onChange={e => set('monthly_salary')(e.target.value)}
+              />
+            </div>
+            <p style={{ fontSize: '0.75rem', color: 'var(--c-text-muted)', marginTop: 4 }}>
+              Used to track monthly salary, advance deductions, and shop purchases.
+            </p>
+          </div>
+        )}
       </div>
 
       {showLiveWarning && (
@@ -631,7 +660,16 @@ function AccountTable({
                         <Icon size={12} />{atype?.label ?? acc.account_type}
                       </span>
                     </td>
-                    <td className="td-title" data-label="Title">{acc.account_title}</td>
+                    <td className="td-title" data-label="Title">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <span>{acc.account_title}</span>
+                        {acc.account_type === 'Staff' && acc.monthly_salary ? (
+                          <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '4px', background: '#ec489918', color: '#db2777', fontWeight: 700, border: '1px solid #ec489930' }}>
+                            Salary: PKR {acc.monthly_salary.toLocaleString()}
+                          </span>
+                        ) : null}
+                      </div>
+                    </td>
                     <td data-label="Area / Region"><span className="area-tag"><MapPin size={12} />{acc.region}</span></td>
                     <td className="td-contact" data-label="Contact"><Phone size={12} />{acc.contact_number ?? '—'}</td>
                     <td>
@@ -664,6 +702,11 @@ function AccountTable({
                   </div>
                   <p className="card-type">{atype?.label}</p>
                   <h4 className="card-title">{acc.account_title}</h4>
+                  {acc.account_type === 'Staff' && acc.monthly_salary ? (
+                    <p style={{ fontSize: '0.78rem', color: '#db2777', fontWeight: 700, margin: '2px 0 6px' }}>
+                      Salary: PKR {acc.monthly_salary.toLocaleString()}/mo
+                    </p>
+                  ) : null}
                   <div className="card-meta">
                     <span><MapPin size={12} />{acc.region}</span>
                     <span><Phone size={12} />{acc.contact_number ?? '—'}</span>

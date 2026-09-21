@@ -109,6 +109,9 @@ export const initDB = () => {
          id TEXT PRIMARY KEY,
          date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
          accountId TEXT NOT NULL,
+         supplierInvoiceNo TEXT,
+         containerNo TEXT,
+         biltiNo TEXT,
          totalAmount REAL NOT NULL DEFAULT 0.0,
          discount REAL NOT NULL DEFAULT 0.0,
          netAmount REAL NOT NULL DEFAULT 0.0,
@@ -122,6 +125,18 @@ export const initDB = () => {
          FOREIGN KEY (accountId) REFERENCES Account(id)
       );
 
+      CREATE TABLE IF NOT EXISTS PurchaseItem (
+        id TEXT PRIMARY KEY,
+        purchaseId TEXT NOT NULL,
+        productId TEXT NOT NULL,
+        quantity INTEGER NOT NULL,
+        unitPrice REAL NOT NULL,
+        watts INTEGER DEFAULT 0,
+        subTotal REAL NOT NULL,
+        FOREIGN KEY (purchaseId) REFERENCES Purchase(id),
+        FOREIGN KEY (productId) REFERENCES Product(id)
+      );
+
       CREATE TABLE IF NOT EXISTS Voucher (
         id TEXT PRIMARY KEY,
         type TEXT NOT NULL,
@@ -131,13 +146,44 @@ export const initDB = () => {
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
         updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS JournalVoucher (
+        id TEXT PRIMARY KEY,
+        voucherNo TEXT NOT NULL,
+        voucherDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        remarks TEXT,
+        totalDebit REAL NOT NULL DEFAULT 0.0,
+        totalCredit REAL NOT NULL DEFAULT 0.0,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS JournalVoucherLine (
+        id TEXT PRIMARY KEY,
+        voucherId TEXT NOT NULL,
+        accountId TEXT NOT NULL,
+        remarks TEXT,
+        debit REAL NOT NULL DEFAULT 0.0,
+        credit REAL NOT NULL DEFAULT 0.0,
+        FOREIGN KEY (voucherId) REFERENCES JournalVoucher(id),
+        FOREIGN KEY (accountId) REFERENCES Account(id)
+      );
     `);
+
+    // Auto-migrate missing columns for Purchase table
+    try { db.execSync("ALTER TABLE Purchase ADD COLUMN containerNo TEXT;"); } catch (e) {}
+    try { db.execSync("ALTER TABLE Purchase ADD COLUMN biltiNo TEXT;"); } catch (e) {}
+    try { db.execSync("ALTER TABLE Purchase ADD COLUMN supplierInvoiceNo TEXT;"); } catch (e) {}
+
+    // Auto-migrate missing columns for Product table
+    try { db.execSync("ALTER TABLE Product ADD COLUMN category TEXT;"); } catch (e) {}
+    try { db.execSync("ALTER TABLE Product ADD COLUMN wattCapacity INTEGER;"); } catch (e) {}
 
     // Seed default Business Settings if missing and fetch them
     const result = db.getAllSync('SELECT * FROM BusinessSettings LIMIT 1');
     if (result.length === 0) {
       db.runSync(
-        `INSERT INTO BusinessSettings (id, businessName) VALUES ('1', 'Solar ERP App')`
+        `INSERT INTO BusinessSettings (id, businessName, ownerName) VALUES ('1', 'AIwithKashan', 'Kashan Khan')`
       );
     }
     console.log('[DB Init] Database initialized successfully!');

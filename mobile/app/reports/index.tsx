@@ -55,25 +55,56 @@ export default function ReportsHubScreen() {
     try {
       const db = getDB();
 
-      // 1. Sales & Purchases Total
+      // 1. Sales Total
       const salesRes: any[] = db.getAllSync('SELECT SUM(netAmount) as total, SUM(totalAmount) as gross FROM Sale');
       const salesTotal = salesRes[0]?.total || 0;
 
-      // 2. Receipts & Payments Vouchers
+      // 2. Exact Cost of Goods Sold (COGS) based on actual units sold and purchase rates
+      let calculatedCOGS = 0;
+      try {
+        const cogsRows: any[] = db.getAllSync(`
+          SELECT 
+            si.quantity as qty,
+            p.purchasePrice,
+            si.subTotal as sellAmount
+          FROM SaleItem si
+          JOIN Product p ON si.productId = p.id
+        `);
+        cogsRows.forEach(r => {
+          calculatedCOGS += (r.qty || 0) * (r.purchasePrice || 0);
+        });
+      } catch (e) {}
+
+      // 3. Purchases Total
+      const purRes: any[] = db.getAllSync('SELECT SUM(netAmount) as total FROM Purchase');
+      const purchasesTotal = purRes[0]?.total || 0;
+
+      // 4. Receipts & Payments Vouchers
       const receiptsRes: any[] = db.getAllSync("SELECT SUM(amount) as total FROM Voucher WHERE type = 'Receipt'");
       const receiptsTotal = receiptsRes[0]?.total || 0;
 
       const paymentsRes: any[] = db.getAllSync("SELECT SUM(amount) as total FROM Voucher WHERE type = 'Payment'");
       const paymentsTotal = paymentsRes[0]?.total || 0;
 
-      // 3. Stock & Inventory Valuation
+      // 5. Operating Expenses
+      let expensesTotal = 0;
+      try {
+        const expRes: any[] = db.getAllSync(`
+          SELECT SUM(amount) as total FROM Voucher 
+          WHERE type = 'Payment' 
+          AND (notes LIKE '%expense%' OR notes LIKE '%bill%' OR notes LIKE '%rent%' OR notes LIKE '%salary%')
+        `);
+        expensesTotal = expRes[0]?.total || 0;
+      } catch (e) {}
+
+      // 6. Stock & Inventory Valuation
       const products: any[] = db.getAllSync('SELECT * FROM Product ORDER BY title ASC');
       let stockVal = 0;
       products.forEach(p => {
         stockVal += (p.stockQuantity || 0) * (p.purchasePrice || 0);
       });
 
-      // 4. Accounts Ledgers Balances
+      // 7. Accounts Ledgers Balances
       const accounts: any[] = db.getAllSync('SELECT * FROM Account ORDER BY name ASC');
       let recv = 0;
       let pay = 0;
@@ -82,16 +113,17 @@ export default function ReportsHubScreen() {
         if ((a.type === 'Supplier' || a.type === 'Suppliers') && a.balance > 0) pay += a.balance;
       });
 
-      // Estimated Profit calculation (Sales Net Total - Estimated COGS 80% - Expenses)
-      const estimatedProfit = salesTotal > 0 ? (salesTotal * 0.18) - paymentsTotal : 0;
+      // Exact Net Profit = Gross Sales Revenue - Cost of Units Sold - Operating Expenses
+      const grossProfit = salesTotal - calculatedCOGS;
+      const netProfit = grossProfit - expensesTotal;
 
       setMetrics({
         salesTotal,
-        purchasesTotal: paymentsTotal * 0.6,
+        purchasesTotal,
         receiptsTotal,
         paymentsTotal,
-        expensesTotal: paymentsTotal * 0.4,
-        netProfit: estimatedProfit,
+        expensesTotal,
+        netProfit,
         stockValue: stockVal,
         totalProducts: products.length,
         receivables: recv,

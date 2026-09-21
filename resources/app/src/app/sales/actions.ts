@@ -19,7 +19,9 @@ function extractMessage(err: unknown, fallback: string): string {
 export async function getCustomers(): Promise<ActionResult<Account[]>> {
   try {
     const data = await prisma.account.findMany({
-      where: { account_type: 'Customers' },
+      where: {
+        account_type: { in: ['Customers', 'Customer', 'Suppliers', 'Supplier', 'Staff', 'Employee'] }
+      },
       orderBy: { account_title: 'asc' }
     });
 
@@ -29,25 +31,45 @@ export async function getCustomers(): Promise<ActionResult<Account[]>> {
       _sum: { remaining_balance: true }
     });
 
+    const unpaidPurchases = await prisma.purchase.groupBy({
+      by: ['supplier_id'],
+      where: { remainingAmount: { gt: 0 }, supplier_id: { not: null } },
+      _sum: { remainingAmount: true }
+    });
+
     const duesMap: Record<string, number> = {};
     for (const u of unpaidSales) {
       if (u.customer_id) duesMap[u.customer_id] = u._sum.remaining_balance || 0;
     }
 
+    const payablesMap: Record<string, number> = {};
+    for (const p of unpaidPurchases) {
+      if (p.supplier_id) payablesMap[p.supplier_id] = p._sum.remainingAmount || 0;
+    }
+
     const enriched = data.map(cust => {
       const opening = cust.balance || 0;
       const salesDue = duesMap[cust.id] || 0;
-      const totalDue = opening + salesDue;
+      const purchasePayable = payablesMap[cust.id] || 0;
+
+      let totalDue = opening + salesDue;
+      if (cust.account_type === 'Suppliers' || cust.account_type === 'Supplier') {
+        // Net balance: positive = receivable from supplier, negative = payable to supplier
+        totalDue = (opening + salesDue) - purchasePayable;
+      }
+
       return {
         ...cust,
         balance: totalDue,
-        total_due: totalDue
+        total_due: totalDue,
+        sales_due: salesDue,
+        purchases_payable: purchasePayable
       };
     });
 
     return { success: true, data: enriched as any };
   } catch (err) {
-    return { success: false, error: extractMessage(err, 'Failed to fetch customers') };
+    return { success: false, error: extractMessage(err, 'Failed to fetch party accounts') };
   }
 }
 

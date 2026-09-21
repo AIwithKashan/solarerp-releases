@@ -18,6 +18,7 @@ model Account {
   contact_number String?
   created_at     DateTime @default(now())
   balance        Float?
+  monthly_salary Float?   @default(0)
 }
 
 model Product {

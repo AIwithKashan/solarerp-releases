@@ -1,35 +1,35 @@
-export const tintColorLight = '#10b981'; // Emerald primary Green
-export const tintColorDark = '#10b981';
+export const tintColorLight = '#0284c7'; // Solar Sky-Blue Primary
+export const tintColorDark = '#38bdf8';
 
 export default {
   light: {
-    text: '#111827', // Dark Slate gray
-    background: '#FFFFFF',
-    cardBackground: '#F9FAFB',
-    border: '#E5E7EB',
+    text: '#0f172a', // Deep Slate
+    background: '#f8fafc',
+    cardBackground: '#ffffff',
+    border: '#e2e8f0',
     tint: tintColorLight,
-    tabIconDefault: '#9CA3AF',
+    tabIconDefault: '#94a3b8',
     tabIconSelected: tintColorLight,
-    surface: '#F3F4F6',
-    primary: '#10b981',
-    primaryForeground: '#FFFFFF',
-    danger: '#EF4444',
-    warning: '#F59E0B',
+    surface: '#f1f5f9',
+    primary: '#0284c7',
+    primaryForeground: '#ffffff',
+    danger: '#ef4444',
+    warning: '#f59e0b',
     success: '#10b981',
   },
   dark: {
-    text: '#E5E7EB', // Slate light text
-    background: '#121212', // Deep Dark background
-    cardBackground: '#1E1E1E', // Darker slate grey cards
-    border: '#2A2A2A',
+    text: '#f8fafc', // Crisp white-slate text
+    background: '#0f172a', // Deep Slate 900
+    cardBackground: '#1e293b', // Slate 800 cards
+    border: '#334155', // Slate 700 borders
     tint: tintColorDark,
-    tabIconDefault: '#6B7280',
+    tabIconDefault: '#64748b',
     tabIconSelected: tintColorDark,
-    surface: '#252525',
-    primary: '#10b981',
-    primaryForeground: '#FFFFFF',
-    danger: '#F87171',
-    warning: '#FBCFE8',
-    success: '#34D399',
+    surface: '#1e293b',
+    primary: '#0284c7',
+    primaryForeground: '#ffffff',
+    danger: '#ef4444',
+    warning: '#f59e0b',
+    success: '#10b981',
   },
 };
