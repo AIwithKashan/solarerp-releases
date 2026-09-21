@@ -100,34 +100,45 @@ export async function GET(request: Request) {
     });
 
     // Sale Payments (Cash/Bank Account receiving money)
-    const salePaymentsMain = await prisma.salePayment.findMany({
-      where: { payment_account_id: accountId, pay_date: { lte: toParam }, sale: {} },
-      include: { sale: true }
-    });
-    salePaymentsMain.forEach(sp => {
-      transactions.push({
-        date: sp.pay_date,
-        timestamp: new Date(sp.sale.created_at).getTime(),
-        ref: sp.sale.invoice_no,
-        description: `Receipt against Sale`,
-        debit: sp.amount,
-        credit: 0,
-        sourceType: 'sale',
-        sourceId: sp.sale.id
+    // Only Cash/Bank accounts receive money receipts from sales. If payment_account_id is a Staff or Supplier,
+    // it represents an internal khata adjustment/contra, so we only debit true Cash/Bank accounts.
+    const isCashOrBank = account.account_type === 'Cash Account' || account.account_type === 'Bank Account';
+    if (isCashOrBank) {
+      const salePaymentsMain = await prisma.salePayment.findMany({
+        where: { payment_account_id: accountId, pay_date: { lte: toParam }, sale: {} },
+        include: { sale: true }
       });
-    });
+      salePaymentsMain.forEach(sp => {
+        transactions.push({
+          date: sp.pay_date,
+          timestamp: new Date(sp.sale.created_at).getTime(),
+          ref: sp.sale.invoice_no,
+          description: `Receipt against Sale (${sp.sale.customer_name || 'Walk-in'})`,
+          debit: sp.amount,
+          credit: 0,
+          sourceType: 'sale',
+          sourceId: sp.sale.id
+        });
+      });
+    }
 
-    // Sale Payments (Customer Account crediting money)
+    // Sale Payments (Customer/Party Account crediting money)
     const salePaymentsParty = await prisma.salePayment.findMany({
       where: { sale: { customer_id: accountId }, pay_date: { lte: toParam } },
       include: { sale: true }
     });
     salePaymentsParty.forEach(sp => {
+      let desc = `Payment via ${sp.payment_account_name || 'Cash'}`;
+      if (sp.payment_account_name?.includes('Salary')) {
+        desc = `Salary Advance (Shop Purchase Deduction)`;
+      } else if (sp.payment_account_name?.includes('Contra')) {
+        desc = `Contra Offset against Supplier Purchases`;
+      }
       transactions.push({
         date: sp.pay_date,
         timestamp: new Date(sp.sale.created_at).getTime(),
         ref: sp.sale.invoice_no,
-        description: `Payment via ${sp.payment_account_name || 'Cash'}`,
+        description: desc,
         debit: 0,
         credit: sp.amount,
         sourceType: 'sale',
@@ -215,7 +226,8 @@ export async function GET(request: Request) {
           account_type: account.account_type,
           contact: account.contact_number,
           region: account.region,
-          isCreditNature
+          isCreditNature,
+          monthly_salary: account.monthly_salary || 0
         },
         openingBalance,
         transactions: formattedLines,

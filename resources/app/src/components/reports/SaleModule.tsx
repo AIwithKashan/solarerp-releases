@@ -39,7 +39,7 @@ export default function SaleModule({
     const csvData = data.map(s => ({
       date: s.sale_date,
       invoice: s.invoice_no,
-      customer: s.customer_name || 'Walk-in Customer',
+      customer: `${s.customer_name || 'Walk-in Customer'}${s.customer_type && s.customer_type !== 'Customers' ? ` (${s.customer_type})` : ''}`,
       subtotal: s.subtotal,
       discount: s.discount_amount,
       net: s.net_total
@@ -192,7 +192,20 @@ export default function SaleModule({
                     <tr key={idx} className="data-row">
                       <td className="td-num" data-label="Date" style={{ whiteSpace: 'nowrap' }}>{s.sale_date}</td>
                       <td data-label="Invoice No" style={{ fontWeight: 500 }}>{s.invoice_no}</td>
-                      <td className="td-title" data-label="Customer">{s.customer_name || 'Walk-in Customer'}</td>
+                      <td className="td-title" data-label="Customer">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <span>{s.customer_name || 'Walk-in Customer'}</span>
+                          {s.customer_type === 'Suppliers' ? (
+                            <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '3px', background: '#f59e0b18', color: '#d97706', fontWeight: 700, border: '1px solid #f59e0b30' }}>
+                              Supplier
+                            </span>
+                          ) : s.customer_type === 'Staff' ? (
+                            <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '3px', background: '#ec489918', color: '#db2777', fontWeight: 700, border: '1px solid #ec489930' }}>
+                              Staff
+                            </span>
+                          ) : null}
+                        </div>
+                      </td>
                       <td data-label="Subtotal (Rs)" style={{ textAlign: 'right', color: 'var(--c-text-muted)' }}>{formatCurrency(s.subtotal)}</td>
                       <td data-label="Discount (Rs)" style={{ textAlign: 'right', color: 'var(--c-danger)' }}>{s.discount_amount > 0 ? formatCurrency(s.discount_amount) : '-'}</td>
                       <td data-label="Net Total (Rs)" style={{ textAlign: 'right', fontWeight: 600, color: 'var(--c-text)' }}>{formatCurrency(s.net_total)}</td>

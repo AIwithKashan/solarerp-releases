@@ -9,6 +9,7 @@ interface AccountItem {
   debit: number;
   credit: number;
   balance: number;
+  monthly_salary?: number;
 }
 
 interface AccountGroup {
@@ -153,7 +154,16 @@ export default function ChartOfAccountsModule({ defaultDate }: { defaultDate: st
               {items.length > 0 ? (
                 items.map((row, i) => (
                   <tr key={i}>
-                    <td>{row.title}</td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <span>{row.title}</span>
+                        {id === 'staff' && row.monthly_salary ? (
+                          <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '3px', background: '#ec489918', color: '#db2777', fontWeight: 700, border: '1px solid #ec489930' }}>
+                            Salary: PKR {formatCurrency(row.monthly_salary)}/mo
+                          </span>
+                        ) : null}
+                      </div>
+                    </td>
                     <td className="coa-text-right">{row.debit > 0 ? formatCurrency(row.debit) : '-'}</td>
                     <td className="coa-text-right">{row.credit > 0 ? formatCurrency(row.credit) : '-'}</td>
                     <td className={`coa-text-right coa-bold ${row.balance > 0 ? 'coa-text-emerald' : row.balance < 0 ? 'coa-text-red' : ''}`}>

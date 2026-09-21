@@ -6,6 +6,7 @@
         "Unified Party Accounts: Customers, Suppliers, and Staff now in Sales Order",
         "Supplier Sales & 1-Click Contra Mutual Offset settlement",
         "Staff Monthly Salary setting & 1-Click Salary Advance deduction",
+        "Reports Suite Upgraded: Account Statement (Ledger), Chart of Accounts, Daily Cash, and Sales Report",
         "Automatic database schema migration for existing databases",
         "External Google OAuth browser opening fix"
     ],

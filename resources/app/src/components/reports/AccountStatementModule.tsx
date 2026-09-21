@@ -30,6 +30,7 @@ interface StatementData {
     account_type: string;
     contact: string | null;
     region: string;
+    monthly_salary?: number | null;
   };
   openingBalance: number;
   transactions: Transaction[];
@@ -238,6 +239,20 @@ export default function AccountStatementModule({
               <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: '0 0 4px 0', color: '#0f172a' }}>{data.account.account_title}</h3>
               <p style={{ fontSize: '0.85rem', color: '#64748b', margin: 0 }}>Account Type: <strong style={{ color: '#334155' }}>{data.account.account_type}</strong></p>
               {data.account.region && <p style={{ fontSize: '0.85rem', color: '#64748b', margin: 0 }}>Region: <strong style={{ color: '#334155' }}>{data.account.region}</strong></p>}
+              {data.account.account_type === 'Staff' && (
+                <div style={{ marginTop: '8px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '0.78rem', background: '#ec489918', color: '#db2777', padding: '3px 10px', borderRadius: '4px', fontWeight: 700, border: '1px solid #ec489930' }}>
+                    💼 Monthly Salary: PKR {formatPKR(data.account.monthly_salary || 0)}
+                  </span>
+                </div>
+              )}
+              {data.account.account_type === 'Suppliers' && (
+                <div style={{ marginTop: '8px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '0.78rem', background: '#f59e0b18', color: '#d97706', padding: '3px 10px', borderRadius: '4px', fontWeight: 700, border: '1px solid #f59e0b30' }}>
+                    🤝 Supplier Trade Account (Purchases, Sales & Contra Settlement)
+                  </span>
+                </div>
+              )}
             </div>
             <div style={{ textAlign: 'right' }}>
               <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0 0 4px 0' }}>Current Balance as of {new Date(toDate).toLocaleDateString('en-PK')}</p>

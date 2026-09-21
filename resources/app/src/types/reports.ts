@@ -1,7 +1,7 @@
 export interface UnifiedTransaction {
   source_id: string;
   txn_date: string; // YYYY-MM-DD
-  source_type: 'PURCHASE' | 'SALE' | 'SALE_PAYMENT_RECEIPT' | 'SALE_PAYMENT_CREDIT' | 'SALE_OTHER_CREDIT' | 'VOUCHER_MAIN' | 'VOUCHER_PARTY' | 'JOURNAL_VOUCHER';
+  source_type: 'PURCHASE' | 'SALE' | 'SALE_PAYMENT_RECEIPT' | 'SALE_PAYMENT_CREDIT' | 'SALE_OTHER_CREDIT' | 'VOUCHER_MAIN' | 'VOUCHER_PARTY' | 'JOURNAL_VOUCHER' | 'CONTRA_OFFSET' | 'SALARY_ADVANCE';
   ref_no: string;
   account_id: string | null;
   account_name: string;

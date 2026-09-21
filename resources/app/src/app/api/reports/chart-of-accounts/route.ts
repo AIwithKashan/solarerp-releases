@@ -33,7 +33,7 @@ export async function GET(request: Request) {
     });
 
     // 3. Compute Account Balances
-    const balanceMap = new Map<string, { id: string; title: string; type: string; debit: number; credit: number; balance: number }>();
+    const balanceMap = new Map<string, { id: string; title: string; type: string; debit: number; credit: number; balance: number; monthly_salary?: number }>();
     
     accounts.forEach(acc => {
       // Opening balance from account creation
@@ -43,7 +43,8 @@ export async function GET(request: Request) {
         type: acc.account_type, 
         debit: acc.balance && acc.balance > 0 ? acc.balance : 0, 
         credit: acc.balance && acc.balance < 0 ? Math.abs(acc.balance) : 0, 
-        balance: acc.balance || 0 
+        balance: acc.balance || 0,
+        monthly_salary: acc.monthly_salary || 0
       });
     });
     
@@ -85,14 +86,22 @@ export async function GET(request: Request) {
     const defaultCashAcc = accounts.find(a => a.account_type === 'Cash Account');
     
     allSalePaymentsCorrected.forEach(sp => {
-      const paymentAccountId = sp.payment_account_id || defaultCashAcc?.id;
-      if (paymentAccountId) {
-        addBal(paymentAccountId, sp.amount, 0); // Cash/Bank gets debit
-      }
-      // Customer gets credit
       const parentSale = allSales.find(s => s.id === sp.sale_id);
-      if (parentSale && parentSale.customer_id) {
-        addBal(parentSale.customer_id, 0, sp.amount);
+      const isNonCashAdjustment = parentSale && sp.payment_account_id === parentSale.customer_id;
+
+      if (isNonCashAdjustment) {
+        // Non-cash salary advance or contra offset: credit the customer to offset the invoice without touching cash
+        if (parentSale && parentSale.customer_id) {
+          addBal(parentSale.customer_id, 0, sp.amount);
+        }
+      } else {
+        const paymentAccountId = sp.payment_account_id || defaultCashAcc?.id;
+        if (paymentAccountId) {
+          addBal(paymentAccountId, sp.amount, 0); // Cash/Bank gets debit
+        }
+        if (parentSale && parentSale.customer_id) {
+          addBal(parentSale.customer_id, 0, sp.amount);
+        }
       }
     });
 
@@ -151,9 +160,13 @@ export async function GET(request: Request) {
     let assetsTotal = 0; // Debit nature
 
     Array.from(balanceMap.values()).forEach(acc => {
-      if (acc.debit === 0 && acc.credit === 0 && acc.balance === 0) return; // Skip zero activity
-
-      const item = { title: acc.title, debit: acc.debit, credit: acc.credit, balance: acc.balance };
+      const item = { 
+        title: acc.title, 
+        debit: acc.debit, 
+        credit: acc.credit, 
+        balance: acc.balance,
+        monthly_salary: acc.monthly_salary || 0
+      };
 
       switch(acc.type) {
         case 'Cash Account':

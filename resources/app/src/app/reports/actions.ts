@@ -38,25 +38,62 @@ export async function getDailyBook(startDate: string, endDate: string, accountId
     salePayments.forEach(sp => {
       const parentSale = sp.sale;
       if (parentSale) {
-        // Find cash account ID if null
-        const cashAccountId = sp.payment_account_id || '';
         const payDate = sp.pay_date || parentSale.sale_date;
-        allTxns.push({
-          source_type: 'SALE_PAYMENT_RECEIPT', source_id: sp.id, txn_date: payDate,
-          account_id: cashAccountId, account_name: sp.payment_account_name || 'Cash',
-          description: `Payment Received for ${parentSale.invoice_no}`,
-          debit: sp.amount, credit: 0, balance: 0,
-          ref_no: '',
-          created_at: new Date(parentSale.created_at).getTime() + 1 // slight offset
-        });
-        allTxns.push({
-          source_type: 'SALE_PAYMENT_RECEIPT', source_id: sp.id, txn_date: payDate,
-          account_id: parentSale.customer_id || '', account_name: parentSale.customer_name || 'Walk-in',
-          description: `Payment against Invoice ${parentSale.invoice_no}`,
-          debit: 0, credit: sp.amount, balance: 0,
-          ref_no: '',
-          created_at: new Date(parentSale.created_at).getTime() + 1
-        });
+        const isNonCashAdjustment = sp.payment_account_id === parentSale.customer_id;
+
+        if (isNonCashAdjustment) {
+          // Internal non-cash contra/salary advance adjustment on the party account
+          const isSalary = sp.payment_account_name?.includes('Salary');
+          const isContra = sp.payment_account_name?.includes('Contra');
+          const desc = isSalary 
+            ? `Salary Advance Adjustment against Invoice ${parentSale.invoice_no}` 
+            : isContra 
+            ? `Contra Offset against Supplier Purchases (Invoice ${parentSale.invoice_no})` 
+            : `Adjustment against Invoice ${parentSale.invoice_no}`;
+          
+          allTxns.push({
+            source_type: isContra ? 'CONTRA_OFFSET' : 'SALARY_ADVANCE',
+            source_id: sp.id,
+            txn_date: payDate,
+            account_id: parentSale.customer_id || '',
+            account_name: parentSale.customer_name || 'Walk-in',
+            description: desc,
+            debit: 0,
+            credit: sp.amount,
+            balance: 0,
+            ref_no: '',
+            created_at: new Date(parentSale.created_at).getTime() + 1
+          });
+        } else {
+          // Normal Cash/Bank receipt
+          const cashAccountId = sp.payment_account_id || '';
+          allTxns.push({
+            source_type: 'SALE_PAYMENT_RECEIPT',
+            source_id: sp.id,
+            txn_date: payDate,
+            account_id: cashAccountId,
+            account_name: sp.payment_account_name || 'Cash',
+            description: `Payment Received for ${parentSale.invoice_no} (${parentSale.customer_name || 'Walk-in'})`,
+            debit: sp.amount,
+            credit: 0,
+            balance: 0,
+            ref_no: '',
+            created_at: new Date(parentSale.created_at).getTime() + 1
+          });
+          allTxns.push({
+            source_type: 'SALE_PAYMENT_RECEIPT',
+            source_id: sp.id,
+            txn_date: payDate,
+            account_id: parentSale.customer_id || '',
+            account_name: parentSale.customer_name || 'Walk-in',
+            description: `Payment against Invoice ${parentSale.invoice_no}`,
+            debit: 0,
+            credit: sp.amount,
+            balance: 0,
+            ref_no: '',
+            created_at: new Date(parentSale.created_at).getTime() + 1
+          });
+        }
       }
     });
 
@@ -277,12 +314,25 @@ export async function getPurchasesReport(startDate: string, endDate: string): Pr
 // ─── 7. Sales Report ──────────────────────────────────────────────────────────
 export async function getSalesReport(startDate: string, endDate: string): Promise<ActionResult<any[]>> {
   try {
-        const data = await prisma.sale.findMany({
+    const data = await prisma.sale.findMany({
       where: { sale_date: { gte: startDate, lte: endDate } },
       include: { sale_items: true, sale_payments: true },
       orderBy: { sale_date: 'asc' }
     });
-    return { success: true, data: data as any };
+
+    const customerIds = Array.from(new Set(data.map(s => s.customer_id).filter(Boolean))) as string[];
+    const accounts = await prisma.account.findMany({
+      where: { id: { in: customerIds } },
+      select: { id: true, account_type: true }
+    });
+    const accTypeMap = new Map(accounts.map(a => [a.id, a.account_type]));
+
+    const enriched = data.map(s => ({
+      ...s,
+      customer_type: s.customer_id ? (accTypeMap.get(s.customer_id) || 'Customers') : 'Walk-in'
+    }));
+
+    return { success: true, data: enriched as any };
   } catch (err) {
     return { success: false, error: extractMessage(err, 'Failed to fetch Sales') };
   }
