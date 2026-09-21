@@ -22,7 +22,7 @@ import { getBackupConfig, getGoogleAuthUrl, disconnectGoogleDrive, backupToCloud
 import { checkForAppUpdates, downloadAndRunUpdate, type UpdateInfo } from '@/app/settings/update-actions';
 import type { BusinessSettings } from '@/types/database';
 
-const CURRENT_APP_VERSION = '2.0.8';
+const CURRENT_APP_VERSION = '2.0.9';
 
 const PAKISTAN_AREAS = [
   'Serai Naurang', 'Bannu', 'Lakki Marwat', 'Karak', 'Kohat',
