@@ -157,6 +157,47 @@ function autoMigrateDatabase(dbFilePath, callback) {
             }
           }
         });
+
+        // ── Auto-reconcile supplier purchases on boot ──────
+        db.all("SELECT id, account_title, balance FROM Account WHERE account_type IN ('Suppliers', 'Supplier', 'Supplier Account')", (supErr, suppliers) => {
+          if (!supErr && suppliers && suppliers.length > 0) {
+            suppliers.forEach(sup => {
+              db.get("SELECT (COALESCE(SUM(debit), 0) - COALESCE(SUM(credit), 0)) AS net FROM JournalVoucherLine WHERE account_id = ?", [sup.id], (jErr, jRow) => {
+                const jvNet = (jRow && jRow.net) ? jRow.net : 0;
+                db.get("SELECT (COALESCE(SUM(CASE WHEN direction = 'payment' THEN amount ELSE -amount END), 0)) AS net FROM Voucher WHERE party_account_id = ?", [sup.id], (vErr, vRow) => {
+                  const vNet = (vRow && vRow.net) ? vRow.net : 0;
+                  db.get("SELECT COALESCE(SUM(p.amount), 0) AS net FROM SalePayment p LEFT JOIN Sale s ON p.sale_id = s.id WHERE p.payment_account_id = ? OR (p.payment_account_name LIKE '%Contra%' AND s.customer_id = ?)", [sup.id, sup.id], (cErr, cRow) => {
+                    const cNet = (cRow && cRow.net) ? cRow.net : 0;
+                    const pool = Math.max(0, jvNet + vNet + cNet);
+                    if (pool > 0) {
+                      db.all("SELECT id, amount, paidAmount, remainingAmount, paymentStatus FROM Purchase WHERE supplier_id = ? ORDER BY purchase_date ASC, created_at ASC, id ASC", [sup.id], (pErr, purchases) => {
+                        if (!pErr && purchases && purchases.length > 0) {
+                          let remPool = pool;
+                          purchases.forEach(p => {
+                            const pAmt = p.amount || 0;
+                            let alloc = 0;
+                            if (remPool >= pAmt) {
+                              alloc = pAmt;
+                              remPool -= pAmt;
+                            } else if (remPool > 0) {
+                              alloc = remPool;
+                              remPool = 0;
+                            }
+                            const newRem = Math.max(0, pAmt - alloc);
+                            const newStatus = newRem <= 0.001 ? 'paid' : (alloc > 0 ? 'partial' : 'unpaid');
+                            if (Math.abs((p.paidAmount || 0) - alloc) > 0.001 || Math.abs((p.remainingAmount || 0) - newRem) > 0.001 || p.paymentStatus !== newStatus) {
+                              db.run("UPDATE Purchase SET paidAmount = ?, remainingAmount = ?, paymentStatus = ? WHERE id = ?", [alloc, newRem, newStatus, p.id]);
+                            }
+                          });
+                        }
+                      });
+                    }
+                  });
+                });
+              });
+            });
+          }
+        });
       });
 
       db.close(() => {

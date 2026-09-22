@@ -266,8 +266,15 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
             </div>
             
             <div style={{ color: 'var(--c-text-muted)', fontWeight: 600, paddingTop: '12px', borderTop: '2px solid var(--c-border)' }}>Remaining Due:</div>
-            <div style={{ textAlign: 'right', color: 'var(--c-danger)', fontWeight: 900, fontSize: '1.2rem', paddingTop: '12px', borderTop: '2px solid var(--c-border)' }}>
-              {settings.currency} {formatPKR(purchase.remainingAmount || (purchase.amount - (purchase.paidAmount || 0)))}
+            <div style={{ 
+              textAlign: 'right', 
+              color: (purchase.remainingAmount !== undefined && purchase.remainingAmount !== null ? purchase.remainingAmount : (purchase.amount - (purchase.paidAmount || 0))) <= 0 ? 'var(--c-success)' : 'var(--c-danger)', 
+              fontWeight: 900, 
+              fontSize: '1.2rem', 
+              paddingTop: '12px', 
+              borderTop: '2px solid var(--c-border)' 
+            }}>
+              {settings.currency} {formatPKR(purchase.remainingAmount !== undefined && purchase.remainingAmount !== null ? purchase.remainingAmount : Math.max(0, purchase.amount - (purchase.paidAmount || 0)))}
             </div>
           </div>
         </div>

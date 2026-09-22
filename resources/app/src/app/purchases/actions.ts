@@ -63,8 +63,143 @@ export async function getPaymentAccounts(): Promise<ActionResult<Account[]>> {
   }
 }
 
+/**
+ * Automatically reconciles supplier purchases (FIFO) against:
+ * 1. Payment Vouchers to the supplier (payments minus receipts)
+ * 2. Journal Vouchers affecting the supplier (debits minus credits, including OB-SETUP)
+ * 3. Contra Sale Payments (sale payments marked as Contra or linked to supplier account)
+ * 4. Initial account debit balances (if legacy non-JV balance existed)
+ *
+ * Updates paidAmount, remainingAmount, and paymentStatus for all affected purchases.
+ */
+export async function reconcileSupplierPurchases(targetSupplierId?: string | null): Promise<void> {
+  try {
+    const supplierWhere = targetSupplierId 
+      ? { id: targetSupplierId } 
+      : { account_type: { in: ['Suppliers', 'Supplier', 'Supplier Account'] } };
+    
+    const suppliers = await prisma.account.findMany({
+      where: supplierWhere,
+      select: { id: true, account_title: true, balance: true }
+    });
+
+    if (!suppliers || suppliers.length === 0) return;
+
+    for (const sup of suppliers) {
+      // 1. Fetch all purchases for this supplier in FIFO order
+      const purchases = await prisma.purchase.findMany({
+        where: {
+          OR: [
+            { supplier_id: sup.id },
+            { supplier_name: sup.account_title }
+          ]
+        },
+        orderBy: [
+          { purchase_date: 'asc' },
+          { created_at: 'asc' },
+          { id: 'asc' }
+        ]
+      });
+
+      if (!purchases || purchases.length === 0) continue;
+
+      // 2. Vouchers Net
+      const vouchers = await prisma.voucher.findMany({
+        where: {
+          OR: [
+            { party_account_id: sup.id },
+            { main_account_id: sup.id }
+          ]
+        }
+      });
+      let voucherNet = 0;
+      for (const v of vouchers) {
+        if (v.party_account_id === sup.id) {
+          voucherNet += (v.direction === 'payment' ? (v.amount || 0) : -(v.amount || 0));
+        } else if (v.main_account_id === sup.id) {
+          voucherNet += (v.direction === 'receipt' ? (v.amount || 0) : -(v.amount || 0));
+        }
+      }
+
+      // 3. Journal Vouchers Net (Debits - Credits)
+      const jvLines = await prisma.journalVoucherLine.findMany({
+        where: { account_id: sup.id }
+      });
+      let jvNet = 0;
+      for (const j of jvLines) {
+        jvNet += ((j.debit || 0) - (j.credit || 0));
+      }
+
+      // 4. Contra Sale Payments
+      const contraPayments = await prisma.salePayment.findMany({
+        where: {
+          OR: [
+            { payment_account_id: sup.id },
+            { payment_account_name: { contains: 'Contra' }, sale: { customer_id: sup.id } }
+          ]
+        }
+      });
+      let contraNet = 0;
+      for (const cp of contraPayments) {
+        contraNet += (cp.amount || 0);
+      }
+
+      // 5. Initial account balance debit (if legacy non-JV balance existed)
+      let initialDebit = 0;
+      if (sup.balance && sup.balance > 0 && jvLines.length === 0) {
+        initialDebit = sup.balance;
+      }
+
+      let settlementPool = Math.max(0, voucherNet + jvNet + contraNet + initialDebit);
+
+      // 6. Allocate pool FIFO across purchases
+      for (const p of purchases) {
+        const pAmount = Number(p.amount) || 0;
+        let allocated = 0;
+
+        if (settlementPool >= pAmount) {
+          allocated = pAmount;
+          settlementPool -= pAmount;
+        } else if (settlementPool > 0) {
+          allocated = settlementPool;
+          settlementPool = 0;
+        } else {
+          allocated = 0;
+        }
+
+        const remaining = Math.max(0, pAmount - allocated);
+        const status = remaining <= 0.001 ? 'paid' : (allocated > 0 ? 'partial' : 'unpaid');
+
+        const currentPaid = Number(p.paidAmount) || 0;
+        const currentRemaining = Number(p.remainingAmount) || 0;
+        const currentStatus = p.paymentStatus || 'unpaid';
+
+        if (
+          Math.abs(currentPaid - allocated) > 0.001 ||
+          Math.abs(currentRemaining - remaining) > 0.001 ||
+          currentStatus !== status
+        ) {
+          await prisma.purchase.update({
+            where: { id: p.id },
+            data: {
+              paidAmount: allocated,
+              remainingAmount: remaining,
+              paymentStatus: status
+            }
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[reconcileSupplierPurchases error]', err);
+  }
+}
+
 export async function getPurchases(): Promise<ActionResult<Purchase[]>> {
   try {
+    // Dynamic Self-Healing: Reconcile all supplier purchases against Vouchers, JVs, and Contra offsets
+    await reconcileSupplierPurchases();
+
     const data = await prisma.purchase.findMany({
       orderBy: { created_at: 'desc' }
     });
@@ -78,10 +213,19 @@ export async function getPurchases(): Promise<ActionResult<Purchase[]>> {
 
 export async function getPurchaseById(id: string): Promise<ActionResult<Purchase>> {
   try {
+    const pur = await prisma.purchase.findFirst({
+      where: { id }
+    });
+    if (!pur) return { success: false, error: 'Purchase not found' };
+
+    // Self-heal supplier purchases before returning invoice
+    if (pur.supplier_id) {
+      await reconcileSupplierPurchases(pur.supplier_id);
+    }
+
     const data = await prisma.purchase.findFirst({
       where: { id }
     });
-    if (!data) return { success: false, error: 'Purchase not found' };
     return { success: true, data: data as any };
   } catch (err) {
     const message = extractMessage(err, 'Failed to fetch purchase');
@@ -147,6 +291,10 @@ export async function createPurchase(payload: PurchaseInsert): Promise<ActionRes
         invoice_no: invoice_no
       }
     });
+
+    if (payload.supplier_id) {
+      await reconcileSupplierPurchases(payload.supplier_id);
+    }
 
     revalidatePath(PURCHASES_PATH);
     return { success: true, data: data as any };
@@ -219,6 +367,11 @@ export async function updatePurchase(payload: PurchaseUpdate): Promise<ActionRes
       data: updateFields
     });
 
+    const targetSup = updateFields.supplier_id || currentRecord.supplier_id;
+    if (targetSup) {
+      await reconcileSupplierPurchases(targetSup);
+    }
+
     revalidatePath(PURCHASES_PATH);
     return { success: true, data: data as any };
   } catch (err) {
@@ -233,9 +386,15 @@ export async function deletePurchase(id: string): Promise<ActionResult<void>> {
 
     if (!id) throw new Error('Purchase ID is required for deletion.');
 
+    const currentRecord = await prisma.purchase.findUnique({ where: { id } });
+
     await prisma.purchase.delete({
       where: { id }
     });
+
+    if (currentRecord?.supplier_id) {
+      await reconcileSupplierPurchases(currentRecord.supplier_id);
+    }
 
     revalidatePath(PURCHASES_PATH);
     return { success: true, data: undefined };

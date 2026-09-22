@@ -128,11 +128,15 @@ export async function GET(request: Request) {
       include: { sale: true }
     });
     salePaymentsParty.forEach(sp => {
+      // Contra offset is an internal settlement against supplier purchases.
+      // The sale invoice already debited the supplier (reducing what we owe them).
+      // Crediting them again here would cancel that deduction.
+      if (sp.payment_account_name?.includes('Contra')) {
+        return;
+      }
       let desc = `Payment via ${sp.payment_account_name || 'Cash'}`;
       if (sp.payment_account_name?.includes('Salary')) {
         desc = `Salary Advance (Shop Purchase Deduction)`;
-      } else if (sp.payment_account_name?.includes('Contra')) {
-        desc = `Contra Offset against Supplier Purchases`;
       }
       transactions.push({
         date: sp.pay_date,

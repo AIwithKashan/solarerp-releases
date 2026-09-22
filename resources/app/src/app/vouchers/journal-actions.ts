@@ -8,6 +8,7 @@
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db';
 import { getAccountLiveBalance } from '@/lib/accountingUtils';
+import { reconcileSupplierPurchases } from '@/app/purchases/actions';
 import type {
   JournalVoucher,
   JournalVoucherInsert,
@@ -305,6 +306,9 @@ export async function createJournalVoucher(
       return jv;
     });
 
+    // Reconcile supplier purchases to reflect any JV debits/credits
+    await reconcileSupplierPurchases();
+
     // 3. Revalidate path to refresh accounting dashboard and run balance lists
     revalidatePath(VOUCHERS_PATH);
     revalidatePath('/accounts');
@@ -413,6 +417,8 @@ export async function deleteJournalVoucher(id: string): Promise<ActionResult<voi
     
     ops.push(prisma.journalVoucher.delete({ where: { id } }));
     await prisma.$transaction(ops);
+
+    await reconcileSupplierPurchases();
 
     revalidatePath(VOUCHERS_PATH);
     revalidatePath('/accounts');

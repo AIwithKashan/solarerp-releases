@@ -1,14 +1,14 @@
 {
-    "version": "2.0.9",
-    "releaseDate": "2026-09-21",
+    "version": "2.1.0",
+    "releaseDate": "2026-09-22",
     "downloadUrl": "https://github.com/AIwithKashan/solarerp-releases/releases/download/v2.0.6/SolarERP-Setup-v2.exe",
     "changelog": [
-        "Unified Party Accounts: Customers, Suppliers, and Staff now in Sales Order",
-        "Supplier Sales & 1-Click Contra Mutual Offset settlement",
+        "Automated Supplier Purchase Reconciliation: Opening balances, advances, and payments automatically deduct and settle supplier purchases in Purchases Tab and Invoices",
+        "Purchase Invoices now accurately reflect Amount Paid and Remaining Due when settled via Ledger / Opening Receivables / Contra",
+        "Vouchers party dropdown automatically clears Due badges when purchases are settled",
+        "Unified Party Accounts: Customers, Suppliers, and Staff in Sales Order with 1-Click Contra Mutual Offset",
         "Staff Monthly Salary setting & 1-Click Salary Advance deduction",
-        "Reports Suite Upgraded: Account Statement (Ledger), Chart of Accounts, Daily Cash, and Sales Report",
-        "Automatic database schema migration for existing databases",
-        "External Google OAuth browser opening fix"
+        "Reports Suite Upgraded: Account Statement (Ledger), Chart of Accounts, Daily Cash, and Sales Report"
     ],
-    "patchUrl": "https://github.com/AIwithKashan/solarerp-releases/releases/download/v2.0.9/SolarERP-Patch.zip"
+    "patchUrl": "https://github.com/AIwithKashan/solarerp-releases/releases/download/v2.1.0/SolarERP-Patch.zip"
 }

@@ -8,6 +8,7 @@ import type {
 } from '@/types/database';
 
 import { getAccountLiveBalance } from '@/lib/accountingUtils';
+import { reconcileSupplierPurchases } from '@/app/purchases/actions';
 
 const VOUCHERS_PATH = '/vouchers';
 
@@ -42,6 +43,9 @@ export async function getBankAccounts(): Promise<ActionResult<Account[]>> {
 
 export async function getPartyAccounts(): Promise<ActionResult<Account[]>> {
   try {
+    // Reconcile purchases first so supplier remaining dues are accurate
+    await reconcileSupplierPurchases();
+
     const data = await prisma.account.findMany({
       orderBy: { account_title: 'asc' }
     });
@@ -198,6 +202,7 @@ export async function createVoucher(payload: Omit<VoucherInsert, 'direction' | '
 
           remainingPayment -= allocate;
         }
+        await reconcileSupplierPurchases(payload.party_account_id);
       } else if (partyAccount && partyAccount.account_type === 'Customers' && direction === 'receipt') {
         // Auto-update Sale remaining due when receiving from a Customer (FIFO)
         const unpaidSales = await prisma.sale.findMany({
@@ -349,6 +354,10 @@ export async function deleteVoucher(id: string): Promise<ActionResult<void>> {
     await prisma.voucher.delete({
       where: { id }
     });
+
+    if (voucher.party_account_id) {
+      await reconcileSupplierPurchases(voucher.party_account_id);
+    }
 
     revalidatePath(VOUCHERS_PATH);
     revalidatePath('/purchases');

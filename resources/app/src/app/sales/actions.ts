@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db';
+import { reconcileSupplierPurchases } from '@/app/purchases/actions';
 
 import type {
   Sale, SaleInsert, SaleUpdate, SaleItem, SaleItemInsert,
@@ -297,6 +298,10 @@ export async function createSale(
       }
     });
 
+    if (header.customer_id) {
+      await reconcileSupplierPurchases(header.customer_id);
+    }
+
     revalidatePath(SALES_PATH);
     return { success: true, data: newSale as any };
   } catch (err: any) {
@@ -391,6 +396,10 @@ export async function updateSale(
       })
     ]);
 
+    if (header.customer_id) {
+      await reconcileSupplierPurchases(header.customer_id);
+    }
+
     revalidatePath(SALES_PATH);
     return { success: true, data: updatedSale as any };
   } catch (err: any) {
@@ -402,8 +411,14 @@ export async function deleteSale(id: string): Promise<ActionResult<void>> {
   try {
     if (!id) throw new Error('Sale ID is required.');
     
+    const currentSale = await prisma.sale.findUnique({ where: { id } });
+
     // Note: cascade delete is supported if relations are set up, otherwise we delete items manually first.
     await prisma.sale.delete({ where: { id } });
+
+    if (currentSale?.customer_id) {
+      await reconcileSupplierPurchases(currentSale.customer_id);
+    }
 
     revalidatePath(SALES_PATH);
     return { success: true, data: undefined };

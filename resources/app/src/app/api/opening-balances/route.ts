@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { reconcileSupplierPurchases } from '@/app/purchases/actions';
 
 export async function GET(request: Request) {
   try {
@@ -170,6 +171,8 @@ export async function POST(request: Request) {
         });
       }
     });
+
+    await reconcileSupplierPurchases();
 
     return NextResponse.json({ success: true });
   } catch (err: any) {
