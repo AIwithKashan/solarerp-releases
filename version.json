@@ -1,14 +1,13 @@
 {
-    "version": "2.1.0",
+    "version": "2.1.1",
     "releaseDate": "2026-09-22",
     "downloadUrl": "https://github.com/AIwithKashan/solarerp-releases/releases/download/v2.0.6/SolarERP-Setup-v2.exe",
     "changelog": [
-        "Automated Supplier Purchase Reconciliation: Opening balances, advances, and payments automatically deduct and settle supplier purchases in Purchases Tab and Invoices",
-        "Purchase Invoices now accurately reflect Amount Paid and Remaining Due when settled via Ledger / Opening Receivables / Contra",
-        "Vouchers party dropdown automatically clears Due badges when purchases are settled",
-        "Unified Party Accounts: Customers, Suppliers, and Staff in Sales Order with 1-Click Contra Mutual Offset",
-        "Staff Monthly Salary setting & 1-Click Salary Advance deduction",
-        "Reports Suite Upgraded: Account Statement (Ledger), Chart of Accounts, Daily Cash, and Sales Report"
+        "Bilti / Batch selection during Sales: Dropdown populated directly from Purchase biltis with live stock counts",
+        "Bilti / Batch numbers seamlessly rendered on printed Sales Invoices",
+        "Fixed Settings tab freezing bug: Editing and saving settings no longer locks navigation or dispatches across tabs",
+        "Instant Real-Time Logo Display: Uploaded logo updates immediately in preview, sidebar, and invoices without needing a restart",
+        "Automated Supplier Purchase Reconciliation & Due Clearance from v2.1.0 included"
     ],
-    "patchUrl": "https://github.com/AIwithKashan/solarerp-releases/releases/download/v2.1.0/SolarERP-Patch.zip"
+    "patchUrl": "https://github.com/AIwithKashan/solarerp-releases/releases/download/v2.1.1/SolarERP-Patch.zip"
 }

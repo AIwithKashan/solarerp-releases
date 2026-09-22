@@ -13,4 +13,6 @@ upload_final_release.py
 *.env.local
 resources/app/.env
 resources/app/.env.local
+publish_release*.py
+upload_*.py
 

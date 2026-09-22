@@ -68,10 +68,14 @@ export async function updateSettings(payload: BusinessSettingsUpdate): Promise<A
       }
     });
 
-    revalidatePath('/', 'layout');
+    revalidatePath('/settings');
+    revalidatePath('/sales');
+    revalidatePath('/purchases');
     revalidatePath('/accounts');
     revalidatePath('/products');
-    revalidatePath('/settings');
+    revalidatePath('/vouchers');
+    revalidatePath('/reports');
+    revalidatePath('/');
     
     return { success: true, data: data as any };
   } catch (err) {
@@ -99,31 +103,40 @@ export async function uploadLogo(formData: FormData): Promise<ActionResult<strin
       throw new Error('Only PNG, JPG, JPEG, SVG, and WEBP formats are allowed.');
     }
 
-    const ext = file.name.split('.').pop() || 'png';
-    const filename = `logo-${Date.now()}.${ext}`;
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-    
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-
-    const filePath = path.join(uploadDir, filename);
     const buffer = Buffer.from(await file.arrayBuffer());
-    fs.writeFileSync(filePath, buffer);
+    const mimeType = file.type || 'image/png';
+    const base64 = buffer.toString('base64');
+    const dataUrl = `data:${mimeType};base64,${base64}`;
 
-    const publicUrl = `/uploads/${filename}`;
+    // Also persist file to disk as fallback
+    try {
+      const ext = file.name.split('.').pop() || 'png';
+      const filename = `logo-${Date.now()}.${ext}`;
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      fs.writeFileSync(path.join(uploadDir, filename), buffer);
+    } catch (e) {
+      // Non-fatal disk write error
+      console.warn('[uploadLogo] Disk file write skipped:', e);
+    }
 
     await prisma.businessSettings.update({
       where: { id: settingsId },
-      data: { logo_url: publicUrl }
+      data: { logo_url: dataUrl }
     });
 
-    revalidatePath('/', 'layout');
+    revalidatePath('/settings');
+    revalidatePath('/sales');
+    revalidatePath('/purchases');
     revalidatePath('/accounts');
     revalidatePath('/products');
-    revalidatePath('/settings');
+    revalidatePath('/vouchers');
+    revalidatePath('/reports');
+    revalidatePath('/');
 
-    return { success: true, data: publicUrl };
+    return { success: true, data: dataUrl };
   } catch (err) {
     const message = extractMessage(err, 'Logo upload failed');
     console.error('[uploadLogo]', message, err);

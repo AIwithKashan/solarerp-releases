@@ -236,6 +236,11 @@ export default async function SalesInvoicePage({ params }: { params: Promise<{ i
                           {it.power_watt}W
                         </span>
                       )}
+                      {it.bilti_no && (
+                        <span className="bilti-badge print-badge" style={{ marginLeft: '6px', fontSize: '0.7rem', padding: '1px 5px', background: '#f1f5f9', color: '#475569', borderRadius: '4px', fontWeight: 600, border: '1px solid #cbd5e1' }}>
+                          BL: {it.bilti_no}
+                        </span>
+                      )}
                     </td>
                     <td>{it.accounting_unit}</td>
                     <td style={{ textAlign: 'right', fontWeight: 500 }}>{it.quantity}</td>

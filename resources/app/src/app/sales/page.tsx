@@ -1,7 +1,7 @@
 // Server Component — preloads sales, customers, bank accounts, settings,
 // and stock availability server-side at render time.
 
-import { getSales, getCustomers, getBankAccounts, getAvailableStock } from '@/app/sales/actions';
+import { getSales, getCustomers, getBankAccounts, getAvailableStock, getPurchaseBiltis } from '@/app/sales/actions';
 import { getSettings } from '@/app/settings/actions';
 import SalesModule from '@/components/sales/SalesModule';
 import type { Sale, BusinessSettings, Account } from '@/types/database';
@@ -13,19 +13,28 @@ export const metadata: Metadata = {
 };
 
 export default async function SalesPage() {
-  const salesResult = await getSales();
+  const [
+    salesResult,
+    customersResult,
+    bankAccountsResult,
+    stockResult,
+    settingsResult,
+    biltisResult
+  ] = await Promise.all([
+    getSales(),
+    getCustomers(),
+    getBankAccounts(),
+    getAvailableStock(),
+    getSettings(),
+    getPurchaseBiltis()
+  ]);
+
   const initialSales: Sale[] = salesResult.success ? salesResult.data : [];
-
-  const customersResult = await getCustomers();
   const initialCustomers: Account[] = customersResult.success ? customersResult.data : [];
-
-  const bankAccountsResult = await getBankAccounts();
   const initialBankAccounts: Account[] = bankAccountsResult.success ? bankAccountsResult.data : [];
-
-  const stockResult = await getAvailableStock();
   const initialStock = stockResult.success ? stockResult.data : [];
+  const initialBiltis: string[] = biltisResult.success ? biltisResult.data : [];
 
-  const settingsResult = await getSettings();
   const settings: BusinessSettings = settingsResult.success ? settingsResult.data : {
     id: '',
     business_name: 'AIwithKashan',
@@ -48,6 +57,7 @@ export default async function SalesPage() {
       initialCustomers={initialCustomers}
       initialBankAccounts={initialBankAccounts}
       initialStock={initialStock || []}
+      initialBiltis={initialBiltis}
       settings={settings}
     />
   );

@@ -17,7 +17,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 
-import { createSale, updateSale, deleteSale, getSaleById, getAvailableStock } from '@/app/sales/actions';
+import { createSale, updateSale, deleteSale, getSaleById, getAvailableStock, getPurchaseBiltis } from '@/app/sales/actions';
 import type {
   Sale, SaleInsert, SaleUpdate, SaleItem, SaleItemInsert,
   SalePayment, SalePaymentInsert, SaleOtherCredit, SaleOtherCreditInsert,
@@ -705,7 +705,7 @@ function LargeSheet({ isOpen, onClose, title, children }: {
 // ─── Full Rebuilt Sales Form Component ────────────────────────────────────────
 
 function SaleForm({
-  onSave, editTarget, isPending, onClose, customers, bankAccounts, stockItems
+  onSave, editTarget, isPending, onClose, customers, bankAccounts, stockItems, purchaseBiltis = []
 }: {
   onSave: (
     header: Omit<SaleInsert, 'subtotal' | 'net_total' | 'total_received' | 'remaining_balance'>,
@@ -718,7 +718,8 @@ function SaleForm({
   onClose: () => void;
   customers: Account[];
   bankAccounts: Account[];
-  stockItems: Array<{ item_name: string; power_watt: number | null; available: number }>;
+  stockItems: Array<{ item_name: string; power_watt: number | null; bilti_no?: string | null; available: number }>;
+  purchaseBiltis?: string[];
 }) {
   // Form state elements
   const [customer_id, setCustomerId]         = useState('');
@@ -758,6 +759,7 @@ function SaleForm({
         quantity: it.quantity,
         rate: it.rate,
         amount: it.amount,
+        bilti_no: (it as any).bilti_no || null,
         remarks: it.remarks
       })) : []);
       setPayments(editTarget.sale_payments ? editTarget.sale_payments.map(p => ({
@@ -1135,15 +1137,55 @@ function SaleForm({
                     </div>
                   </div>
 
-                  {/* Bilti No / Container # */}
+                  {/* Bilti No / Container # Dropdown */}
                   <div className="field-group">
                     <label className="field-label">Bilti / Batch</label>
-                    <input
+                    <select
                       className="field-input"
-                      placeholder="e.g. BL-9042"
                       value={it.bilti_no || ''}
-                      onChange={e => handleSaveItemField(idx, 'bilti_no', e.target.value)}
-                    />
+                      onChange={e => handleSaveItemField(idx, 'bilti_no', e.target.value || null)}
+                    >
+                      <option value="">-- General Stock / No Bilti --</option>
+                      {(() => {
+                        const currentItemBatches = stockItems.filter(s =>
+                          s.item_name && it.item_name &&
+                          s.item_name.toLowerCase().trim() === it.item_name.toLowerCase().trim() &&
+                          s.bilti_no
+                        );
+                        const matchedBiltiNames = new Set(currentItemBatches.map(b => b.bilti_no!));
+                        const otherBiltis = (purchaseBiltis || []).filter(b => !matchedBiltiNames.has(b));
+
+                        return (
+                          <>
+                            {currentItemBatches.length > 0 && (
+                              <optgroup label={`Batches for ${it.item_name || 'Item'}`}>
+                                {currentItemBatches.map((b, bIdx) => (
+                                  <option key={`matched-${b.bilti_no}-${bIdx}`} value={b.bilti_no!}>
+                                    {b.bilti_no} (In Stock: {b.available})
+                                  </option>
+                                ))}
+                              </optgroup>
+                            )}
+
+                            {otherBiltis.length > 0 && (
+                              <optgroup label="All Purchase Biltis">
+                                {otherBiltis.map(b => (
+                                  <option key={`other-${b}`} value={b}>
+                                    {b}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            )}
+
+                            {it.bilti_no && !matchedBiltiNames.has(it.bilti_no) && !otherBiltis.includes(it.bilti_no) && (
+                              <option value={it.bilti_no}>
+                                {it.bilti_no} (Assigned)
+                              </option>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </select>
                   </div>
 
                   {/* Quantity (Capped at available stock) */}
@@ -2010,12 +2052,14 @@ export default function SalesModule({
   initialCustomers,
   initialBankAccounts,
   initialStock,
+  initialBiltis = [],
   settings
 }: {
   initialSales: Sale[];
   initialCustomers: Account[];
   initialBankAccounts: Account[];
-  initialStock: Array<{ item_name: string; power_watt: number | null; available: number }>;
+  initialStock: Array<{ item_name: string; power_watt: number | null; bilti_no?: string | null; available: number }>;
+  initialBiltis?: string[];
   settings: BusinessSettings;
 }) {
   
@@ -2035,7 +2079,8 @@ export default function SalesModule({
   const [sales, setSales]             = useState<Sale[]>(initialSales);
   const [customers, setCustomers]     = useState<Account[]>(initialCustomers);
   const [bankAccounts, setBankAccounts] = useState<Account[]>(initialBankAccounts);
-  const [stockItems, setStockItems]   = useState<Array<{ item_name: string; power_watt: number | null; available: number }>>(initialStock);
+  const [stockItems, setStockItems]   = useState<Array<{ item_name: string; power_watt: number | null; bilti_no?: string | null; available: number }>>(initialStock);
+  const [purchaseBiltis, setPurchaseBiltis] = useState<string[]>(initialBiltis);
   const [editTarget, setEditTarget]   = useState<SaleWithRelations | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -2048,7 +2093,8 @@ export default function SalesModule({
     setCustomers(initialCustomers);
     setBankAccounts(initialBankAccounts);
     setStockItems(initialStock);
-  }, [initialSales, initialCustomers, initialBankAccounts, initialStock]);
+    if (initialBiltis) setPurchaseBiltis(initialBiltis);
+  }, [initialSales, initialCustomers, initialBankAccounts, initialStock, initialBiltis]);
 
   useEffect(() => {
     const saved = localStorage.getItem('theme');
@@ -2088,9 +2134,15 @@ export default function SalesModule({
   };
 
   const reloadStock = async () => {
-    const res = await getAvailableStock();
+    const [res, biltisRes] = await Promise.all([
+      getAvailableStock(),
+      getPurchaseBiltis()
+    ]);
     if (res.success && res.data) {
       setStockItems(res.data);
+    }
+    if (biltisRes.success && biltisRes.data) {
+      setPurchaseBiltis(biltisRes.data);
     }
   };
 
@@ -2190,6 +2242,7 @@ export default function SalesModule({
           customers={customers}
           bankAccounts={bankAccounts}
           stockItems={stockItems}
+          purchaseBiltis={purchaseBiltis}
         />
       </LargeSheet>
 

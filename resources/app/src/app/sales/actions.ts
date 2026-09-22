@@ -144,6 +144,23 @@ export async function getAvailableStock(): Promise<ActionResult<Array<{
   }
 }
 
+export async function getPurchaseBiltis(): Promise<ActionResult<string[]>> {
+  try {
+    const purchases = await prisma.purchase.findMany({
+      where: { bilti_no: { not: null } },
+      select: { bilti_no: true },
+      distinct: ['bilti_no'],
+      orderBy: { created_at: 'desc' }
+    });
+    const biltis = purchases
+      .map(p => p.bilti_no?.trim())
+      .filter((b): b is string => !!b && b.length > 0);
+    return { success: true, data: Array.from(new Set(biltis)) };
+  } catch (err) {
+    return { success: false, error: extractMessage(err, 'Failed to fetch bilti numbers') };
+  }
+}
+
 export async function getSales(): Promise<ActionResult<Sale[]>> {
   try {
     // Dynamic self-healing recalculation for all sales
