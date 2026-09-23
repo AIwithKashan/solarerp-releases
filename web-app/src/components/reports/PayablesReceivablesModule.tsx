@@ -65,7 +65,9 @@ interface ReportData {
 
 export default function PayablesReceivablesModule({ defaultDate }: { defaultDate: string }) {
   const router = useRouter();
-  const [asOfDate, setAsOfDate] = useState(defaultDate);
+  const [fromDate, setFromDate] = useState('2000-01-01');
+  const [toDate, setToDate] = useState(defaultDate);
+  const [isAllTime, setIsAllTime] = useState(true);
   const [data, setData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,14 +75,17 @@ export default function PayablesReceivablesModule({ defaultDate }: { defaultDate
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    fetchData(asOfDate);
-  }, [asOfDate]);
+    fetchData(fromDate, toDate, isAllTime);
+  }, [fromDate, toDate, isAllTime]);
 
-  const fetchData = async (date: string) => {
+  const fetchData = async (from: string, to: string, allTime: boolean) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/reports/payables-receivables?date=${date}`);
+      const url = allTime
+        ? `/api/reports/payables-receivables?allTime=true`
+        : `/api/reports/payables-receivables?from=${from}&to=${to}`;
+      const res = await fetch(url);
       const json = await res.json();
       if (json.success) {
         setData(json.data);
@@ -116,49 +121,90 @@ export default function PayablesReceivablesModule({ defaultDate }: { defaultDate
 
   return (
     <div className="pr-wrapper">
-      {/* Back button */}
-      <button 
-        onClick={() => router.push('/reports')} 
-        className="btn-ghost-sm no-print"
-        style={{
-          position: 'fixed',
-          top: '20px',
-          left: '20px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          background: 'var(--c-bg-card)',
-          border: '1px solid var(--c-border)',
-          borderRadius: '20px',
-          padding: '6px 14px',
-          cursor: 'pointer',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-          zIndex: 100
-        }}
-      >
-        <ArrowLeft size={16} />
-        Back to Reports
-      </button>
-
       <div className="pr-main-page">
         {/* Header */}
         <div className="pr-header">
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Scale size={24} style={{ color: '#8b5cf6' }} />
-              <h1 className="pr-brand">{data?.businessName || 'SolarERP'}</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <button 
+              onClick={() => router.push('/reports')} 
+              className="btn-ghost-sm no-print"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '38px',
+                height: '38px',
+                background: 'var(--c-bg)',
+                border: '1px solid var(--c-border)',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                color: 'var(--c-text)',
+                transition: 'all 0.2s',
+                flexShrink: 0
+              }}
+              title="Back to Reports"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Scale size={24} style={{ color: '#8b5cf6' }} />
+                <h1 className="pr-brand">{data?.businessName || 'SolarERP'}</h1>
+              </div>
+              <p className="pr-report-name">Payables & Receivables Report (Who to Pay & From Whom to Receive)</p>
             </div>
-            <p className="pr-report-name">Payables & Receivables Report (Who to Pay & From Whom to Receive)</p>
           </div>
 
           <div className="pr-date-picker-wrap">
-            <div className="pr-date-picker no-print">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Calendar size={16} />
+            <div className="pr-date-picker no-print" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAllTime(true);
+                    setFromDate('2000-01-01');
+                    setToDate(defaultDate);
+                  }}
+                  className={`pr-quick-date-btn ${isAllTime ? 'active' : ''}`}
+                >
+                  ⚡ All Time
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAllTime(false);
+                    const now = new Date();
+                    const firstDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+                    setFromDate(firstDay);
+                    setToDate(defaultDate);
+                  }}
+                  className={`pr-quick-date-btn ${!isAllTime && fromDate !== defaultDate ? 'active' : ''}`}
+                >
+                  📅 This Month
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ fontSize: '11px', color: 'var(--c-text-muted)' }}>From:</span>
                 <input 
                   type="date" 
-                  value={asOfDate}
-                  onChange={(e) => setAsOfDate(e.target.value)}
+                  value={fromDate === '2000-01-01' ? '' : fromDate}
+                  onChange={(e) => {
+                    setIsAllTime(false);
+                    setFromDate(e.target.value);
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ fontSize: '11px', color: 'var(--c-text-muted)' }}>To:</span>
+                <input 
+                  type="date" 
+                  value={toDate}
+                  onChange={(e) => {
+                    setIsAllTime(false);
+                    setToDate(e.target.value);
+                  }}
                 />
               </div>
 
@@ -168,7 +214,7 @@ export default function PayablesReceivablesModule({ defaultDate }: { defaultDate
             </div>
 
             <div className="pr-print-date print-only">
-              As of Date: {new Date(asOfDate).toLocaleDateString('en-GB')}
+              {isAllTime ? 'All Time Statement' : `Period: ${fromDate} to ${toDate}`}
             </div>
           </div>
         </div>
@@ -546,6 +592,27 @@ export default function PayablesReceivablesModule({ defaultDate }: { defaultDate
           font-size: 13px;
           color: var(--c-text);
           outline: none;
+        }
+
+        .pr-quick-date-btn {
+          background: var(--c-bg);
+          border: 1px solid var(--c-border);
+          border-radius: 6px;
+          padding: 5px 10px;
+          font-size: 11px;
+          font-weight: 600;
+          color: var(--c-text-muted);
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .pr-quick-date-btn:hover {
+          color: var(--c-text);
+          border-color: var(--c-text);
+        }
+        .pr-quick-date-btn.active {
+          background: #8b5cf6;
+          color: white;
+          border-color: #8b5cf6;
         }
 
         .pr-btn-print {

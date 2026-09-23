@@ -17,10 +17,19 @@ export const metadata: Metadata = {
   description: 'View full transaction history and running ledger balance for any account.',
 };
 
-export default async function AccountStatementPage() {
+export default async function AccountStatementPage({
+  searchParams
+}: {
+  searchParams?: Promise<{ accountId?: string; from?: string; to?: string }> | { accountId?: string; from?: string; to?: string };
+}) {
+  const params = await Promise.resolve(searchParams || {});
+  const defaultAccountId = params.accountId || '';
+  const fromParam = params.from || getFirstDayOfMonth();
+  const toParam = params.to || getToday();
+
   let accounts: any[] = [];
   try {
-        accounts = await prisma.account.findMany({
+    accounts = await prisma.account.findMany({
       select: { id: true, account_title: true, account_type: true, region: true },
       orderBy: { account_title: 'asc' }
     });
@@ -28,5 +37,12 @@ export default async function AccountStatementPage() {
     console.error('Failed to load accounts for statement', err);
   }
 
-  return <AccountStatementModule initialAccounts={accounts} defaultFrom={getFirstDayOfMonth()} defaultTo={getToday()} />;
+  return (
+    <AccountStatementModule 
+      initialAccounts={accounts} 
+      defaultAccountId={defaultAccountId}
+      defaultFrom={fromParam} 
+      defaultTo={toParam} 
+    />
+  );
 }

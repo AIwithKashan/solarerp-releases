@@ -151,43 +151,42 @@ export default function BankBalanceModule({ defaultDate }: { defaultDate: string
 
   return (
     <div className="bb-wrapper">
-      {/* Back Button */}
-      <button 
-        onClick={() => router.push('/reports')} 
-        className="btn-ghost-sm no-print"
-        style={{
-          position: 'fixed',
-          top: '20px',
-          left: '20px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          background: 'var(--c-bg-card)',
-          border: '1px solid var(--c-border)',
-          borderRadius: '20px',
-          padding: '6px 14px',
-          cursor: 'pointer',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-          zIndex: 100
-        }}
-      >
-        <ArrowLeft size={16} />
-        Back to Reports
-      </button>
-
       <div className="bb-main-page">
         {/* Header */}
         <div className="bb-header">
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Landmark size={24} style={{ color: '#0ea5e9' }} />
-              <h1 className="bb-brand">{data?.businessName || 'SolarERP'}</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <button 
+              onClick={() => router.push('/reports')} 
+              className="btn-ghost-sm no-print"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '38px',
+                height: '38px',
+                background: 'var(--c-bg)',
+                border: '1px solid var(--c-border)',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                color: 'var(--c-text)',
+                transition: 'all 0.2s',
+                flexShrink: 0
+              }}
+              title="Back to Reports"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Landmark size={24} style={{ color: '#0ea5e9' }} />
+                <h1 className="bb-brand">{data?.businessName || 'SolarERP'}</h1>
+              </div>
+              <p className="bb-report-name">Bank Balances & Reconciliation</p>
             </div>
-            <p className="bb-report-name">Bank Balances & Reconciliation</p>
           </div>
 
           <div className="bb-date-picker-wrap">
-            <div className="bb-date-picker no-print">
+            <div className="bb-date-picker no-print" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', justifyContent: 'flex-end' }}>
               <select 
                 value={selectedBankId}
                 onChange={(e) => setSelectedBankId(e.target.value)}
@@ -208,6 +207,25 @@ export default function BankBalanceModule({ defaultDate }: { defaultDate: string
                 ))}
               </select>
 
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+                  style={{
+                    background: 'var(--c-bg)',
+                    border: '1px solid var(--c-border)',
+                    borderRadius: '6px',
+                    padding: '5px 10px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    color: 'var(--c-text)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  📅 Today
+                </button>
+              </div>
+
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Calendar size={16} />
                 <input 
@@ -218,7 +236,7 @@ export default function BankBalanceModule({ defaultDate }: { defaultDate: string
               </div>
 
               <button onClick={handlePrint} className="bb-btn-print" title="Print Statement">
-                <Printer size={16} />
+                <Printer size={16} /> Print
               </button>
             </div>
 

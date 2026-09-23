@@ -4,41 +4,73 @@ import { prisma } from '@/lib/db';
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const asOfDate = searchParams.get('date') || new Date().toISOString().split('T')[0];
+    const fromParam = searchParams.get('from')?.trim() || '';
+    const toParam = searchParams.get('to')?.trim() || searchParams.get('date')?.trim() || new Date().toISOString().split('T')[0];
+    const isAllTime = searchParams.get('allTime') === 'true' || fromParam === '2000-01-01' || (!fromParam && !searchParams.get('date'));
 
     // 1. Fetch Business Settings
     const settings = await prisma.businessSettings.findFirst({});
     const businessName = settings?.business_name || 'SolarERP Business';
 
-    // 2. Fetch Accounts (exclude purely cash/bank or nominal accounts like capital/assets unless they have party dues)
+    // 2. Fetch Accounts
     const accounts = await prisma.account.findMany({
       orderBy: { account_title: 'asc' }
     });
 
-    // 3. Fetch Transactions up to asOfDate
+    const titleToAccId = new Map<string, string>();
+    accounts.forEach(a => {
+      titleToAccId.set(a.account_title.toLowerCase().trim(), a.id);
+    });
+
+    // 3. Date Filters
+    const salesWhere: any = {};
+    const purchasesWhere: any = {};
+    const salePaymentsWhere: any = {};
+    const paymentVouchersWhere: any = {};
+    const vouchersWhere: any = {};
+    const jvWhere: any = {};
+
+    if (!isAllTime) {
+      if (fromParam) {
+        salesWhere.sale_date = { gte: fromParam, lte: toParam };
+        purchasesWhere.purchase_date = { gte: fromParam, lte: toParam };
+        salePaymentsWhere.pay_date = { gte: fromParam, lte: toParam };
+        paymentVouchersWhere.date = { gte: fromParam, lte: toParam };
+        vouchersWhere.voucher_date = { gte: fromParam, lte: toParam };
+        jvWhere.voucher = { voucher_date: { gte: fromParam, lte: toParam } };
+      } else {
+        salesWhere.sale_date = { lte: toParam };
+        purchasesWhere.purchase_date = { lte: toParam };
+        salePaymentsWhere.pay_date = { lte: toParam };
+        paymentVouchersWhere.date = { lte: toParam };
+        vouchersWhere.voucher_date = { lte: toParam };
+        jvWhere.voucher = { voucher_date: { lte: toParam } };
+      }
+    }
+
     const sales = await prisma.sale.findMany({
-      where: { sale_date: { lte: asOfDate } }
+      where: salesWhere
     });
 
     const salePayments = await prisma.salePayment.findMany({
-      where: { pay_date: { lte: asOfDate } },
+      where: salePaymentsWhere,
       include: { sale: true }
     });
 
     const purchases = await prisma.purchase.findMany({
-      where: { purchase_date: { lte: asOfDate } }
+      where: purchasesWhere
     });
 
     const paymentVouchers = await prisma.paymentVoucher.findMany({
-      where: { date: { lte: asOfDate } }
+      where: paymentVouchersWhere
     });
 
     const vouchers = await prisma.voucher.findMany({
-      where: { voucher_date: { lte: asOfDate } }
+      where: vouchersWhere
     });
 
     const jvLines = await prisma.journalVoucherLine.findMany({
-      where: { voucher: { voucher_date: { lte: asOfDate } } },
+      where: jvWhere,
       include: { voucher: true }
     });
 
@@ -57,6 +89,7 @@ export async function GET(request: Request) {
       unpaidInvoicesCount: number;
       unpaidInvoicesTotal: number;
       lastDate: string | null;
+      isDirectAccount: boolean;
     }
 
     const partyMap = new Map<string, PartyAggregate>();
@@ -76,7 +109,8 @@ export async function GET(request: Request) {
         totalSettled: 0,
         unpaidInvoicesCount: 0,
         unpaidInvoicesTotal: 0,
-        lastDate: null
+        lastDate: null,
+        isDirectAccount: true
       });
     });
 
@@ -88,10 +122,15 @@ export async function GET(request: Request) {
       }
     };
 
-    // Sales (Debit customer, increase billed)
+    // Process Sales (Debit customer, increase billed)
     sales.forEach(s => {
-      if (s.customer_id && partyMap.has(s.customer_id)) {
-        const p = partyMap.get(s.customer_id)!;
+      let partyId = s.customer_id;
+      if (!partyId && s.customer_name?.trim()) {
+        partyId = titleToAccId.get(s.customer_name.toLowerCase().trim()) || null;
+      }
+
+      if (partyId && partyMap.has(partyId)) {
+        const p = partyMap.get(partyId)!;
         p.totalDebits += s.net_total;
         p.totalBilled += s.net_total;
         if (s.remaining_balance > 0) {
@@ -99,12 +138,47 @@ export async function GET(request: Request) {
           p.unpaidInvoicesTotal += s.remaining_balance;
         }
         trackDate(p, s.sale_date);
+      } else if (s.customer_name?.trim()) {
+        const key = `cust_${s.customer_name.trim().toLowerCase()}`;
+        if (!partyMap.has(key)) {
+          partyMap.set(key, {
+            id: key,
+            title: s.customer_name.trim(),
+            type: 'Customers',
+            phone: s.customer_phone || '',
+            region: s.customer_area || 'Walk-in',
+            openingBalance: 0,
+            totalDebits: s.net_total,
+            totalCredits: s.total_received,
+            totalBilled: s.net_total,
+            totalSettled: s.total_received,
+            unpaidInvoicesCount: s.remaining_balance > 0 ? 1 : 0,
+            unpaidInvoicesTotal: s.remaining_balance,
+            lastDate: s.sale_date,
+            isDirectAccount: false
+          });
+        } else {
+          const p = partyMap.get(key)!;
+          p.totalDebits += s.net_total;
+          p.totalCredits += s.total_received;
+          p.totalBilled += s.net_total;
+          p.totalSettled += s.total_received;
+          if (s.remaining_balance > 0) {
+            p.unpaidInvoicesCount += 1;
+            p.unpaidInvoicesTotal += s.remaining_balance;
+          }
+          trackDate(p, s.sale_date);
+        }
       }
     });
 
-    // Sale Payments (Credit customer, increase settled)
+    // Process Sale Payments (Credit customer, increase settled)
     salePayments.forEach(sp => {
-      const custId = sp.sale?.customer_id;
+      let custId = sp.sale?.customer_id;
+      if (!custId && sp.sale?.customer_name?.trim()) {
+        custId = titleToAccId.get(sp.sale.customer_name.toLowerCase().trim()) || null;
+      }
+
       if (custId && partyMap.has(custId)) {
         const p = partyMap.get(custId)!;
         p.totalCredits += sp.amount;
@@ -113,10 +187,15 @@ export async function GET(request: Request) {
       }
     });
 
-    // Purchases (Credit supplier, increase billed)
+    // Process Purchases (Credit supplier, increase billed)
     purchases.forEach(pr => {
-      if (pr.supplier_id && partyMap.has(pr.supplier_id)) {
-        const p = partyMap.get(pr.supplier_id)!;
+      let suppId = pr.supplier_id;
+      if (!suppId && pr.supplier_name?.trim()) {
+        suppId = titleToAccId.get(pr.supplier_name.toLowerCase().trim()) || null;
+      }
+
+      if (suppId && partyMap.has(suppId)) {
+        const p = partyMap.get(suppId)!;
         p.totalCredits += pr.amount;
         p.totalBilled += pr.amount;
         if (pr.remainingAmount > 0) {
@@ -124,22 +203,46 @@ export async function GET(request: Request) {
           p.unpaidInvoicesTotal += pr.remainingAmount;
         }
         trackDate(p, pr.purchase_date);
+      } else if (pr.supplier_name?.trim()) {
+        const key = `supp_${pr.supplier_name.trim().toLowerCase()}`;
+        if (!partyMap.has(key)) {
+          partyMap.set(key, {
+            id: key,
+            title: pr.supplier_name.trim(),
+            type: 'Suppliers',
+            phone: '',
+            region: '',
+            openingBalance: 0,
+            totalDebits: pr.paidAmount || 0,
+            totalCredits: pr.amount,
+            totalBilled: pr.amount,
+            totalSettled: pr.paidAmount || 0,
+            unpaidInvoicesCount: pr.remainingAmount > 0 ? 1 : 0,
+            unpaidInvoicesTotal: pr.remainingAmount,
+            lastDate: pr.purchase_date,
+            isDirectAccount: false
+          });
+        }
       }
     });
 
-    // Purchase Payment Vouchers (Debit supplier, increase settled)
+    // Process Purchase Payment Vouchers (Debit supplier, increase settled)
     paymentVouchers.forEach(pv => {
-      if (pv.supplierId && partyMap.has(pv.supplierId)) {
-        const p = partyMap.get(pv.supplierId)!;
+      let suppId: string | null = pv.supplierId;
+      if (!suppId && pv.supplierName?.trim()) {
+        suppId = titleToAccId.get(pv.supplierName.toLowerCase().trim()) || null;
+      }
+
+      if (suppId && partyMap.has(suppId)) {
+        const p = partyMap.get(suppId)!;
         p.totalDebits += pv.amount;
         p.totalSettled += pv.amount;
         trackDate(p, pv.date);
       }
     });
 
-    // Vouchers (Direct receipts and payments)
+    // Process Vouchers (Direct receipts and payments)
     vouchers.forEach(v => {
-      // Party account
       if (v.party_account_id && partyMap.has(v.party_account_id)) {
         const p = partyMap.get(v.party_account_id)!;
         if (v.direction === 'payment') {
@@ -152,7 +255,6 @@ export async function GET(request: Request) {
         trackDate(p, v.voucher_date);
       }
 
-      // If main account was a party account (rare, but supported)
       if (partyMap.has(v.main_account_id)) {
         const p = partyMap.get(v.main_account_id)!;
         if (v.direction === 'receipt') {
@@ -164,13 +266,13 @@ export async function GET(request: Request) {
       }
     });
 
-    // Journal Vouchers
+    // Process Journal Vouchers
     jvLines.forEach(line => {
       if (partyMap.has(line.account_id)) {
         const p = partyMap.get(line.account_id)!;
         p.totalDebits += line.debit;
         p.totalCredits += line.credit;
-        trackDate(p, line.voucher.voucher_date);
+        trackDate(p, line.voucher?.voucher_date);
       }
     });
 
@@ -178,16 +280,13 @@ export async function GET(request: Request) {
     const receivables: any[] = [];
     const payables: any[] = [];
 
-    // Relevant account types for party balances:
     const partyTypes = new Set(['Customers', 'Suppliers', 'Staff', 'Customer', 'Supplier', 'Employee']);
 
     partyMap.forEach(p => {
-      // Exclude pure Cash Account or Bank Account
       if (p.type === 'Cash Account' || p.type === 'Bank Account') return;
 
       const balance = p.totalDebits - p.totalCredits;
 
-      // Only include accounts that either belong to party types or have transaction activity / non-zero balance
       const isParty = partyTypes.has(p.type) || p.totalBilled > 0 || p.unpaidInvoicesCount > 0;
       if (!isParty && balance === 0) return;
 
@@ -205,7 +304,8 @@ export async function GET(request: Request) {
           amountDue: balance,
           unpaidInvoicesCount: p.unpaidInvoicesCount,
           unpaidInvoicesTotal: p.unpaidInvoicesTotal,
-          lastDate: p.lastDate
+          lastDate: p.lastDate,
+          hasAccount: p.isDirectAccount
         });
       } else if (balance < -0.01) {
         // PAYABLE (We owe them money)
@@ -222,10 +322,10 @@ export async function GET(request: Request) {
           amountToPay,
           unpaidInvoicesCount: p.unpaidInvoicesCount,
           unpaidInvoicesTotal: p.unpaidInvoicesTotal,
-          lastDate: p.lastDate
+          lastDate: p.lastDate,
+          hasAccount: p.isDirectAccount
         });
       } else if (p.unpaidInvoicesCount > 0) {
-        // Invoices still open on record even if offset by something
         if (p.type === 'Customers' && p.unpaidInvoicesTotal > 0) {
           receivables.push({
             accountId: p.id,
@@ -239,7 +339,8 @@ export async function GET(request: Request) {
             amountDue: p.unpaidInvoicesTotal,
             unpaidInvoicesCount: p.unpaidInvoicesCount,
             unpaidInvoicesTotal: p.unpaidInvoicesTotal,
-            lastDate: p.lastDate
+            lastDate: p.lastDate,
+            hasAccount: p.isDirectAccount
           });
         } else if (p.type === 'Suppliers' && p.unpaidInvoicesTotal > 0) {
           payables.push({
@@ -254,13 +355,13 @@ export async function GET(request: Request) {
             amountToPay: p.unpaidInvoicesTotal,
             unpaidInvoicesCount: p.unpaidInvoicesCount,
             unpaidInvoicesTotal: p.unpaidInvoicesTotal,
-            lastDate: p.lastDate
+            lastDate: p.lastDate,
+            hasAccount: p.isDirectAccount
           });
         }
       }
     });
 
-    // Sort descending by highest amount
     receivables.sort((a, b) => b.amountDue - a.amountDue);
     payables.sort((a, b) => b.amountToPay - a.amountToPay);
 
@@ -272,7 +373,9 @@ export async function GET(request: Request) {
       success: true,
       data: {
         businessName,
-        asOfDate,
+        from: fromParam || null,
+        to: toParam,
+        isAllTime,
         summary: {
           totalReceivables,
           totalPayables,

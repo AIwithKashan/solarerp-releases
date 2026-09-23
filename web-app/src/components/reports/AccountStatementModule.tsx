@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { Printer, Calendar, Loader2, AlertCircle, Search, ChevronDown, Check, X, FileText, ArrowLeft } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 interface Account {
   id: string;
@@ -45,29 +45,43 @@ function formatPKR(val: number) {
 
 export default function AccountStatementModule({ 
   initialAccounts, 
+  defaultAccountId = '',
   defaultFrom, 
   defaultTo 
 }: { 
   initialAccounts: Account[]; 
+  defaultAccountId?: string;
   defaultFrom: string; 
   defaultTo: string; 
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const paramAccountId = searchParams?.get('accountId') || defaultAccountId;
   
   const [accounts] = useState(initialAccounts);
-  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
-  const [fromDate, setFromDate] = useState(defaultFrom);
-  const [toDate, setToDate] = useState(defaultTo);
+  const [selectedAccountId, setSelectedAccountId] = useState<string>(paramAccountId || '');
+  const [fromDate, setFromDate] = useState(searchParams?.get('from') || defaultFrom);
+  const [toDate, setToDate] = useState(searchParams?.get('to') || defaultTo);
   
   const [data, setData] = useState<StatementData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Combobox State
+  const initialAcc = initialAccounts.find(a => a.id === (paramAccountId || ''));
   const [comboOpen, setComboOpen] = useState(false);
-  const [comboQuery, setComboQuery] = useState('');
+  const [comboQuery, setComboQuery] = useState(initialAcc ? initialAcc.account_title : '');
   const comboRoot = useRef<HTMLDivElement>(null);
   const comboInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const accId = searchParams?.get('accountId') || defaultAccountId;
+    if (accId && accId !== selectedAccountId) {
+      setSelectedAccountId(accId);
+      const acc = accounts.find(a => a.id === accId);
+      if (acc) setComboQuery(acc.account_title);
+    }
+  }, [searchParams, defaultAccountId]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -197,6 +211,41 @@ export default function AccountStatementModule({
                 style={{ padding: '8px 12px 8px 32px', borderRadius: '6px', border: '1px solid var(--c-border)', background: 'var(--c-bg)', color: 'var(--c-text)', fontSize: '0.9rem', outline: 'none' }}
               />
             </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-end', marginBottom: '2px' }}>
+            <button
+              type="button"
+              onClick={() => { setFromDate('2000-01-01'); }}
+              style={{
+                padding: '8px 12px',
+                borderRadius: '6px',
+                border: '1px solid var(--c-border)',
+                background: fromDate === '2000-01-01' ? 'var(--c-text)' : 'var(--c-bg)',
+                color: fromDate === '2000-01-01' ? 'var(--c-bg)' : 'var(--c-text)',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              ⚡ All Time
+            </button>
+            <button
+              type="button"
+              onClick={() => { setFromDate(defaultFrom); setToDate(defaultTo); }}
+              style={{
+                padding: '8px 12px',
+                borderRadius: '6px',
+                border: '1px solid var(--c-border)',
+                background: fromDate === defaultFrom ? 'var(--c-text)' : 'var(--c-bg)',
+                color: fromDate === defaultFrom ? 'var(--c-bg)' : 'var(--c-text)',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              📅 This Month
+            </button>
           </div>
         </div>
 

@@ -1,12 +1,12 @@
 {
-    "version": "2.1.3",
+    "version": "2.1.4",
     "releaseDate": "2026-09-23",
     "downloadUrl": "https://github.com/AIwithKashan/solarerp-releases/releases/download/v2.0.6/SolarERP-Setup-v2.exe",
     "changelog": [
-        "Bank Balances Report: Complete bank ledger & daily reconciliation for all banks showing opening balance, deposits, withdrawals, and closing balance just like Cash in Hand",
-        "Payables & Receivables Report: Accurate accounting aging and dues report showing exactly who to pay (Suppliers & Creditors) and from whom to receive (Customers & Debtors) with contact numbers, unpaid invoice counts, and ledger statement links",
-        "Direct Navigation: Added Bank Balances and Payables & Receivables report cards to the main Reports Dashboard",
-        "Printable Banking & Dues Statements: Dedicated high-resolution print layouts for banking reconciliation and party balances"
+        "Receivables Fix: Accurately links all sales dues, credit balances, and udhaars directly into the Receivables ledger",
+        "Direct Statement Navigation: Clicking the Statement button on any customer or supplier now immediately opens and loads that exact party's ledger statement",
+        "From Date, To Date & All Time Filters: Added From/To date inputs and '⚡ All Time' preset buttons to Payables & Receivables and Account Statements",
+        "Fixed Back Button: Positioned the back arrow button cleanly inside the report headers so it is never clipped or covered by the top app bar"
     ],
-    "patchUrl": "https://github.com/AIwithKashan/solarerp-releases/releases/download/v2.1.3/SolarERP-Patch.zip"
+    "patchUrl": "https://github.com/AIwithKashan/solarerp-releases/releases/download/v2.1.4/SolarERP-Patch.zip"
 }
