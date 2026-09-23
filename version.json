@@ -1,13 +1,13 @@
 {
-    "version": "2.1.1",
-    "releaseDate": "2026-09-22",
+    "version": "2.1.2",
+    "releaseDate": "2026-09-23",
     "downloadUrl": "https://github.com/AIwithKashan/solarerp-releases/releases/download/v2.0.6/SolarERP-Setup-v2.exe",
     "changelog": [
-        "Bilti / Batch selection during Sales: Dropdown populated directly from Purchase biltis with live stock counts",
-        "Bilti / Batch numbers seamlessly rendered on printed Sales Invoices",
-        "Fixed Settings tab freezing bug: Editing and saving settings no longer locks navigation or dispatches across tabs",
-        "Instant Real-Time Logo Display: Uploaded logo updates immediately in preview, sidebar, and invoices without needing a restart",
-        "Automated Supplier Purchase Reconciliation & Due Clearance from v2.1.0 included"
+        "Bilti-Driven Sales Item Filtering: Selecting a Bilti number now strictly filters the Item Description list to only products purchased in that specific batch",
+        "Eliminated duplicate product entries: Products purchased under different Biltis or batches are deduplicated and aggregated cleanly",
+        "Real-Time Out-of-Stock Status: Items with zero or depleted stock now clearly display 'Out of Stock' in both dropdowns and order lines",
+        "Optimized Line Item Flow: Bilti / Batch selector moved to the first position for streamlined batch-first item selection",
+        "Installation & Service Credits in P&L: Other credits (installation, labor, service charges) are now fully recognized in Profit & Loss and Sales reports as 100% gross profit"
     ],
-    "patchUrl": "https://github.com/AIwithKashan/solarerp-releases/releases/download/v2.1.1/SolarERP-Patch.zip"
+    "patchUrl": "https://github.com/AIwithKashan/solarerp-releases/releases/download/v2.1.2/SolarERP-Patch.zip"
 }
