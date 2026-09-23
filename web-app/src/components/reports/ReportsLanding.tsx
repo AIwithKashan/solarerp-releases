@@ -10,7 +10,9 @@ import {
   PackageSearch, 
   LineChart, 
   Receipt,
-  ArrowLeft
+  ArrowLeft,
+  Landmark,
+  Scale
 } from 'lucide-react';
 
 const REPORTS = [
@@ -29,6 +31,22 @@ const REPORTS = [
     icon: Wallet,
     href: '/reports/daily-cash',
     color: '#0ea5e9', // Sky
+  },
+  {
+    id: 'bank-balance',
+    title: 'Bank Balances',
+    description: 'Bank ledger showing opening balances, deposits, withdrawals, and ending balance for all banks.',
+    icon: Landmark,
+    href: '/reports/bank-balance',
+    color: '#0284c7', // Sky Blue
+  },
+  {
+    id: 'payables-receivables',
+    title: 'Payables & Receivables',
+    description: 'Complete breakdown of who to pay (Suppliers & Creditors) and from whom to receive (Customers & Debtors).',
+    icon: Scale,
+    href: '/reports/payables-receivables',
+    color: '#8b5cf6', // Violet
   },
   {
     id: 'chart-of-accounts',
